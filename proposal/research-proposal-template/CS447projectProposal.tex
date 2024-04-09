@@ -1,0 +1,80 @@
+\documentclass[11pt,letterpaper]{article}
+\oddsidemargin 0in
+\evensidemargin 0in
+\textwidth 6.5in
+\topmargin -0.5in
+\textheight 9.0in
+\usepackage{hyperref}
+\usepackage{mathptmx}
+\usepackage{graphicx}
+\usepackage[usenames,dvipsnames]{xcolor}
+\newcommand{\blue}[1]{\textcolor{RoyalBlue}{#1}}
+\newcommand{\fillme}[1]{\blue{\texttt{[Insert #1]}}}
+\newcommand{\instructions}[1]{\blue{\textit{#1}}}
+% uncomment the next two lines if you want the instructions to disappear.
+%\renewcommand{\instructions}[1]{}
+%\renewcommand{\fillme}[1]{}
+
+\begin{document}
+
+\title{CS447 Research Project Proposal \fillme{Your Project}}
+\author{\fillme{Your Name (Your NetID)}}
+\maketitle
+
+
+
+\instructions{If you are taking CS447 for 4 hours credit, you need to
+  either do a research project or a literature review.\\
+This is a \LaTeX template for the initial proposal for the research project,  but should also give you a start on the final report.\\
+The blue pieces of text  in this template are either instructions ({\tt$\backslash$instructions\{...\}}) or indicate where you need to fill in something ({\tt$\backslash$fillme\{...\}}).  
+You should replace all the {\tt$\backslash$fillme\{...\}} commands with your own text.
+To make the instructions disappear, please uncomment the 
+\begin{center}
+{\tt$\backslash$renewcommand\{$\backslash$instructions\}[1]\{\}}\\
+%{\tt$\backslash$renewcommand\{$\backslash$fillme\}[1]\{\}}\\
+\end{center}
+lines in the preamble (just above  {\tt $\backslash$begin\{document\}} of this .tex file) by removing the leading \% marks, 
+recompile (run \LaTeX again) and submit the PDF on Compass.}\\
+
+\section*{Task description}
+\instructions{Describe the task you want to tackle in your project.}
+
+\section*{Background}
+\instructions{What prior work has there been on or related to your task? Please
+  provide bibliographic references where available}
+
+\section*{Data and evaluation}
+\instructions{Do you have data to train/develop and test your system on? How
+  will you evaluate your system?}
+
+\section*{Your approach} 
+\instructions{Describe how you want to tackle this task}
+
+\section*{Your to-do list}
+\instructions{Get started by making a to-do list. Set yourself deadlines. Here are a few
+  items that might appear on your to-do list}
+\begin{enumerate}
+\item \fillme{...do you have data?}
+\item \fillme{...do you know related work? (have you got the
+    references  for your .bib file?)}
+\item \fillme{...what algorithm will you use? do you need to implement
+    this yourself, or will you use an off-the-shelf package?} 
+\item \fillme{...what experiments do you plan to run?}
+  \item \fillme{...how will you evaluate your experiments? Do you have
+    to implement your own evaluation script, or can you use somebody
+    else's? }
+\item \fillme{...and don't forget to allocate time for the writeup!} 
+\end{enumerate}
+
+\section*{Bibliography}
+\instructions{Your references for the background section, should go in your own .bib file. You then need to run {\tt bibtex}.\footnote{You may want to look at \url{http://www.bibtex.org/Using/}}.  If you call your bibliography {\tt mybib.bib} and put it in the same directory as this {\tt .tex} file, add {\tt$\backslash$bibliography\{mybib\}} before {\tt$\backslash$end\{document\}}
+}
+\bibliography{mybib}
+\bibliographystyle{plain}
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

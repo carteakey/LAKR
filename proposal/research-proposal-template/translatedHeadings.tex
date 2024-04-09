@@ -1,0 +1,66 @@
+\newcommand{\paperSubTitle}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{Outline and Topic Proposal}{}
+    \ifthenelse{\equal{#1}{de}}{Outline und Themenvorschlag}{}
+}
+
+\newcommand{\sectionQuestions}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{\section{Scope of Work - 4 Questions}}{}
+    \ifthenelse{\equal{#1}{de}}{\section{Ziel der Arbeit - 4 Fragen}}{}
+}
+
+\newcommand{\sectionQuestionsDescription}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{In this section the essence of the proposed work is described by answering four key questions. }{}
+    \ifthenelse{\equal{#1}{de}}{Im Folgenden wird der Kern der Arbeit beschrieben indem vier Kernfragen beantwortet werden.}{}
+}
+
+\newcommand{\sectionInitialTOC}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{\section{Preliminary Table of Contents}}{}
+    \ifthenelse{\equal{#1}{de}}{\section{Vorläufige Gliederung}}{}
+}
+
+\newcommand{\sectionInitialTOCDescription}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{In this section the table of contents for the proposed work is described.}{}
+    \ifthenelse{\equal{#1}{de}}{Im Folgenden wird ein Inhaltverzeichnis für die vorgeschlagene Arbeit vorgestellt.}{}
+}
+
+\newcommand{\sectionSource}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{\section{Relevant Related Work}}{}
+    \ifthenelse{\equal{#1}{de}}{\section{Relevante verwandte Arbeiten}}{}
+}
+
+
+\newcommand{\sectionSourceDescription}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{In this section, identified related work is described.}{}
+    \ifthenelse{\equal{#1}{de}}{Diese Section stellt verwandte Arbeiten dar und erklärt kurz deren Bedeutung für die vorgeschlagene Arbeit.}{}
+}
+
+\newcommand{\questionOne}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{What is the problem you want to address in your work?}{}
+    \ifthenelse{\equal{#1}{de}}{Was ist das Problem, welches Sie in Ihrer Arbeit bearbeiten wollen?}{}
+}
+
+\newcommand{\questionTwo}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{Why is it a problem?}{}
+    \ifthenelse{\equal{#1}{de}}{Warum ist es ein Problem?}{}
+}
+
+\newcommand{\questionThree}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{What is the solution you developed in your work?}{}
+    \ifthenelse{\equal{#1}{de}}{Was ist die Lösung die sie entwickelt haben?}{}
+}
+
+\newcommand{\questionFour}[1]
+{
+    \ifthenelse{\equal{#1}{en}}{Why is it a solution?}{}
+    \ifthenelse{\equal{#1}{de}}{Warum ist es eine Lösung?}{}
+}

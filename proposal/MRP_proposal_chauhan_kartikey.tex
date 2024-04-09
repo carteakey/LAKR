@@ -1,0 +1,90 @@
+\documentclass[a4paper]{article}
+
+%% Language and font encodings
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{tabu}
+\usepackage{url}
+
+%% Sets page size and margins
+\usepackage[a4paper,top=2cm,bottom=2cm,left=2cm,right=2cm,marginparwidth=1.75cm]{geometry}
+
+%% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+%\usepackage{apacite}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{LLM-Augmented Knowledge-Graph-Based Recommendation System
+}
+\author{Kartikey Chauhan - 501259284}
+\date{}
+
+\begin{document}
+\maketitle
+\section*{Overview}
+Recommender systems have been widely applied to address the issue of information overload in various internet services, exhibiting promising performance in scenarios such as e-commerce platforms and media recommendations. 
+In the general domain, the traditional knowledge recommendation method is  \textit{collaborative filtering (CF)}, which usually suffers from the cold start problem and sparsity of user-item interactions. 
+Knowledge-based recommendation models effectively alleviate the data sparsity issue leveraging the side information in the knowledge graph, and have achieved state of the art performance\cite{guo2020survey} (e.g. KGAT\cite{wang2019kgat} , LightGCN\cite{he2020lightgcn}).
+However, KGs are difficult to construct and evolve by nature, and existing methods often lack considering textual information. On the other hand, LLMs are black-box models, which often fall short of capturing and accessing factual knowledge.
+Therefore, it is complementary to unify LLMs and KGs together and simultaneously leverage their advantages (See \hyperref[fig:llm_vs_kg]{Figure 1}).
+This project aims to explore areas of improvements in current KG-based recommendation systems and also integrating LLMs to augment them to consider the textual information and improve performance in recommendation.
+
+\section*{Objectives}
+
+\begin{itemize}
+\item Investigate the potential of Knowledge Graphs (KGs) in improving the performance of recommendation systems.
+\item Explore methods to address current limitations e.g. lack of user-personalized recommendations \cite{pang2024knowledgeaware} \cite{liu2024knowledgeenhanced} of KG-based recommendation systems.
+\item Researching combination of those novel methods with the use of LLMs in extracting latent relationships, Knowledge Graph (KG) embedding, KG completion, and KG construction for recommendation in an efficient, explicit, and end-to-end manner. 
+\end{itemize}
+
+\section*{Datasets}
+\begin{itemize}
+\item The proposed system will be extensively compared against state of the art models on popular recommendation datasets (e.g Amazon-book, Last-FM, Yelp2018). More details about the potential datasets can be found in the \hyperref[fig:datasets]{Figure 2}.
+\end{itemize}
+\section*{Evaluation}
+\begin{itemize}
+\item \textbf{AUC}, \textbf{Recall@K} and \textbf{Normalized Discounted Cumulative Gain (NDCG)} are chosen as key metrics to evaluate the performance of the proposed system. 
+These metrics will provide a comprehensive assessment of the system's ability to accurately recommend items that are relevant to users. 
+AUC measures the quality of the overall ranking of items, Recall@K evaluates the model's ability to recommend relevant items within the top K recommendations, and NDCG takes into account both the relevance and the rank of the recommended items.
+\end{itemize}
+
+\nocite{*}
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\section*{Appendix}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{PLM_vs_KG.png}
+\caption{Summarization of the pros and cons for LLMs and KGs. From \cite{pan2023unifying}.}
+\label{fig:llm_vs_kg}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{CSRec.png}
+\caption{The overall framework of Common sense-based Recommendation. From \cite{yang2024common}.}
+\label{fig:kg_construction}
+\end{figure}
+    
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{KG_construction.png}
+\caption{The general framework of LLM-based KG construction. From \cite{pan2023unifying}.}
+\label{fig:kg_construction}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.3\textwidth]{datasets.png}
+\caption{A collection of datasets for different application scenarios. From \cite{guo2020survey} }
+\label{fig:datasets}
+\end{figure}
+
+\end{document}
