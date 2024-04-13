@@ -31,19 +31,19 @@ In the general domain, the traditional knowledge recommendation method is  \text
 Knowledge-based recommendation models effectively alleviate the data sparsity issue leveraging the side information in the knowledge graph, and have achieved state of the art performance\cite{guo2020survey} (e.g. KGAT\cite{wang2019kgat} , LightGCN\cite{he2020lightgcn}).
 However, KGs are difficult to construct and evolve by nature, and existing methods often lack considering textual information. On the other hand, LLMs are black-box models, which often fall short of capturing and accessing factual knowledge.
 Therefore, it is complementary to unify LLMs and KGs together and simultaneously leverage their advantages (See \hyperref[fig:llm_vs_kg]{Figure 1}).
-This project aims to explore areas of improvements in current KG-based recommendation systems and also integrating LLMs to augment them to consider the textual information and improve performance in recommendation.
+This project aims to explore LLM-augmented KGs, that leverage Large Language models (LLM) for different KG tasks such as embedding, completion, construction and also incorporate textual information which could be a way to help overcome these challenges and lead to better recommendation systems.
 
-\section*{Objectives}
+\section*{Research Questions}
 
 \begin{itemize}
-\item Investigate the potential of Knowledge Graphs (KGs) in improving the performance of recommendation systems.
-\item Explore methods to address current limitations e.g. lack of user-personalized recommendations \cite{pang2024knowledgeaware} \cite{liu2024knowledgeenhanced} of KG-based recommendation systems.
-\item Researching combination of those novel methods with the use of LLMs in extracting latent relationships, Knowledge Graph (KG) embedding, KG completion, and KG construction for recommendation in an efficient, explicit, and end-to-end manner. 
+\item Can LLM's be used to enhance the construction / quality / volume of information in the knowledge graphs? Is it possible to effectively constrain LLM output to be of a specific systematic knowledge extraction format?
+\item Do these improved knowledge graphs lead to better recommendation systems? 
+\item Can we combine current SOTA methods with the use of LLMs in extracting latent relationships, Knowledge Graph (KG) embedding, KG completion, and KG construction for recommendation in an efficient, explicit, and end-to-end manner.
 \end{itemize}
 
 \section*{Datasets}
 \begin{itemize}
-\item The proposed system will be extensively compared against state of the art models on popular recommendation datasets (e.g Amazon-book, Last-FM, Yelp2018). More details about the potential datasets can be found in the \hyperref[fig:datasets]{Figure 2}.
+\item The primary dataset in scope is \href{https://amazon-reviews-2023.github.io/index.html}{Amazon Reviews'23}. If needed, the proposed system will also be extensively compared against baselines of state of the art models on popular recommendation datasets (e.g Amazon-book, Last-FM, Yelp2018). 
 \end{itemize}
 \section*{Evaluation}
 \begin{itemize}
@@ -60,7 +60,7 @@ AUC measures the quality of the overall ranking of items, Recall@K evaluates the
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{PLM_vs_KG.png}
+\includegraphics[width=0.6\textwidth]{img/PLM_vs_KG.png}
 \caption{Summarization of the pros and cons for LLMs and KGs. From \cite{pan2023unifying}.}
 \label{fig:llm_vs_kg}
 \end{figure}
@@ -68,21 +68,21 @@ AUC measures the quality of the overall ranking of items, Recall@K evaluates the
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{CSRec.png}
-\caption{The overall framework of Common sense-based Recommendation. From \cite{yang2024common}.}
+\includegraphics[width=0.8\textwidth]{img/Idea.png}
+\caption{High level overview of constructing Knowledge Graphs from Language models.}
 \label{fig:kg_construction}
 \end{figure}
     
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{KG_construction.png}
+\includegraphics[width=0.8\textwidth]{img/KG_construction.png}
 \caption{The general framework of LLM-based KG construction. From \cite{pan2023unifying}.}
 \label{fig:kg_construction}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.3\textwidth]{datasets.png}
+\includegraphics[width=0.3\textwidth]{img/datasets.png}
 \caption{A collection of datasets for different application scenarios. From \cite{guo2020survey} }
 \label{fig:datasets}
 \end{figure}
