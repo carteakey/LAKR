@@ -21,3 +21,6 @@ touch ~/.jupyter/nbconfig/notebook.json
 python -m graph_notebook.start_notebook --notebooks-dir ~/notebook/destination/dir
 
 https://amazon-reviews-2023.github.io
+
+
+https://github.com/fusion-jena/automatic-KG-creation-with-LLM
