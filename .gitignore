@@ -10,3 +10,5 @@
 *.toc
 *.fdb*
 *.fls
+
+.venv

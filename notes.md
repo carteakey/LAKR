@@ -24,3 +24,9 @@ https://amazon-reviews-2023.github.io
 
 
 https://github.com/fusion-jena/automatic-KG-creation-with-LLM
+
+docker run \
+    --publish=7474:7474 --publish=7687:7687 \
+    --volume=$HOME/neo4j/data:/data \
+    neo4j
+    --env='NEO4JLABS_PLUGINS=["apoc"]'
