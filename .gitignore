@@ -10,6 +10,11 @@
 *.toc
 *.fdb*
 *.fls
+*.lof
+*.lot 
+*.bcf
+
+
 
 .venv
 datasets/Toys_and_Games.csv
