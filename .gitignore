@@ -12,3 +12,7 @@
 *.fls
 
 .venv
+datasets/Toys_and_Games.csv
+datasets/Video_Games.test.csv
+datasets/Video_Games.train.csv
+datasets/Video_Games.valid.csv
