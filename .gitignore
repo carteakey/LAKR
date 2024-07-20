@@ -10,14 +10,18 @@
 *.toc
 *.fdb*
 *.fls
-*.lof
+*.bcf 
+*.run.xml
+*.synctex(busy)
+*.synctex.gz(busy)
 *.lot 
-*.bcf
-
-
+*.lof
 
 .venv
-datasets/Toys_and_Games.csv
-datasets/Video_Games.test.csv
-datasets/Video_Games.train.csv
-datasets/Video_Games.valid.csv
+datasets/*.csv
+db/neo4j/data/
+db/neo4j/plugins
+
+*.duckdb
+
+archive

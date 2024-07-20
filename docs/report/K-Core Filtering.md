@@ -1,1 +1,0 @@
-AKA Degeneracy (graph theory)

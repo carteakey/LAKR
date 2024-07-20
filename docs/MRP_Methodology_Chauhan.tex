@@ -14,7 +14,7 @@
 \usepackage{microtype}      % microtypography
 \usepackage{lipsum}         % Can be removed after putting your text content
 \usepackage{float}
-\usepackage[style=apa ,backend=biber]{biblatex}
+\usepackage[style=authoryear,backend=biber]{biblatex}
 \bibliography{references}
 
 \usepackage{graphicx}
@@ -131,7 +131,7 @@ As such, the integration of LLMs with KGs presents a novel direction to overcome
 
 \textbf{\cite{pan2023unifying}} discuss different approaches to unify large language models (LLMs) and knowledge graphs (KGs) to leverage their complementary strengths. Several methods are covered:
 
-% \begin{figure}[hbt!]
+% \begin{figure}[H]
 %   \centering
 %   \includegraphics[width=0.8\textwidth]{img/KG_construction.png}
 %   \caption{The general framework of LLM-based KG construction. From \cite{pan2023unifying}.}
@@ -171,7 +171,7 @@ The authors evaluate BLAIR's generalization ability across multiple recommendati
 
 \textbf{\cite{yang2024common}} proposes \textbf{CSRec}, a framework that incorporates common sense knowledge from large language models into knowledge-based recommender systems by constructing a common sense-based knowledge graph and fusing it with the metadata-based knowledge graph using mutual information maximization. Experimental results demonstrate that CSRec significantly improves the recommendation performance, especially in cold-start scenarios.
 
-% \begin{figure}[hbt!]
+% \begin{figure}[H]
 %   \centering
 %   \includegraphics[width=0.8\textwidth]{img/Idea.png}
 %   \caption{High level overview of constructing Knowledge Graphs from Language models}
@@ -209,7 +209,7 @@ The reviews span from May'96 to Sep'24 and cover a wide range of categories, inc
 For each category in the dataset, there are two main files: \textit{User Reviews} and \textit{Item Metadata}. The User Reviews file contains information about the reviews posted by users, including ratings, text, helpfulness votes, and more. The Item Metadata file contains information about the items being reviewed, such as descriptions, prices, images, and more.
 
 \subsubsection{For User Reviews}
-\begin{table}[hbt!]
+\begin{table}[H]
   \centering
   \begin{tabular}{|l|l|p{8cm}|}
   \hline
@@ -231,7 +231,7 @@ For each category in the dataset, there are two main files: \textit{User Reviews
   
 \subsubsection{For Item Metadata}
 
-\begin{table}[hbt!]
+\begin{table}[H]
   \centering
   \begin{tabular}{|l|l|p{8cm}|}
   \hline
@@ -263,78 +263,58 @@ We limit our analysis to the Video Games category for the purpose of this docume
 
 \subsubsection{Ratings Distribution}
 
-The ratings distribution of the user reviews shown in fig \hyperref[fig:ratings_distribution]{Figure 3}  provides insights into the overall sentiment of the users towards the products. The distribution of ratings can help identify the most popular products and the products that need improvement. The following histogram shows the distribution of ratings in the dataset.
+The ratings distribution of the user reviews shown in fig \autoref{fig:ratings_distribution}  provides insights into the overall sentiment of the users towards the products. The distribution of ratings can help identify the most popular products and the products that need improvement. The following histogram shows the distribution of ratings in the dataset.
 
-\begin{figure}[hbt!]
-  \centering
-  \includegraphics[width=0.8\textwidth]{img/avg_rating.png}
-  \caption{Ratings Distribution of User Reviews}
-  \label{fig:ratings_distribution}
-  \end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{img/avg_rating.png}
+\caption{Ratings Distribution of User Reviews}
+\label{fig:ratings_distribution}
+\end{figure}
 
 The ratings distribution shows that the majority of the reviews have high ratings, with a peak at 5.0. This indicates that users generally have positive sentiments towards the products they review. However, there are also reviews with lower ratings, indicating that some products may need improvement.
 
-\subsubsection{Most Reviewed Products}
+\subsubsection{Average Rating Over Time}
 
-Identifying the most reviewed products can help understand the popularity and demand for different products in the dataset. The following table shows the top 10 most reviewed products based on the number of reviews.
+The trend of average product ratings from 1998 to 2022 is shown in \autoref{fig:avg_rating}. The graph reveals an initial decline in ratings until 2007, followed by a gradual increase peaking around 2015, and then a slight downward trend with fluctuations in recent years.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{img/avg_rating_over_time.png}
+\caption{Average Rating Over Time}
+\label{fig:avg_rating}
+\end{figure}
 
-% \begin{table}[hbt!]
-%   \centering
-%   \begin{tabular}{|l|l|l|}
-%   \hline
-%   \textbf{Product ID} & \textbf{Product Name} & \textbf{Number of Reviews} \\ \hline
-%   B07VGRJDFY & Echo Dot (3rd Gen) - Smart speaker with Alexa & 5000 \\ \hline
-%   B07VGRJDFZ & Echo Dot (4th Gen) - Smart speaker with Alexa & 4500 \\ \hline
-%   B07VGRJDFX & Echo Dot (2nd Gen) - Smart speaker with Alexa & 4000 \\ \hline
-%   B07VGRJDFW & Echo Dot (1st Gen) - Smart speaker with Alexa & 3500 \\ \hline
-%   B07VGRJDFV & Echo Dot (5th Gen) - Smart speaker with Alexa & 3000 \\ \hline
-%   B07VGRJDFU & Echo Dot (6th Gen) - Smart speaker with Alexa & 2500 \\ \hline
-%   B07VGRJDFR & Echo Dot (7th Gen) - Smart speaker with Alexa & 2000 \\ \hline
-%   B07VGRJDFQ & Echo Dot (8th Gen) - Smart speaker with Alexa & 1500 \\ \hline
-%   B07VGRJDFP & Echo Dot (9th Gen) - Smart speaker with Alexa & 1000 \\ \hline
-%   B07VGRJDFN & Echo Dot (10th Gen) - Smart speaker with Alexa & 500 \\ \hline
-%   \end{tabular}
-%   \caption{Top 10 Most Reviewed Products}
-%   \label{table:most_reviewed_products}
-%   \end{table}
+\subsubsection{Number of Reviews Over Time}
 
-\subsubsection{Most Active Users}
+\autoref{fig:review_count} displays the volume of reviews from 1999 to 2022. The graph shows exponential growth in review numbers, particularly steep from 2009 onwards, with significant fluctuations after 2014 and a sharp decline towards the end of the period.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{img/no_reviews_over_time.png}
+\caption{Number of Reviews Over Time}
+\label{fig:review_count}
+\end{figure}
 
-Identifying the most active users can help understand the user engagement and contribution to the dataset. The following table shows the top 10 most active users based on the number of reviews posted.
+\subsubsection{Word Cloud of Review Titles}
 
-% \begin{table}[hbt!]
-%   \centering
-%   \begin{tabular}{|l|l|l|}
-%   \hline
-%   \textbf{User ID} & \textbf{User Name} & \textbf{Number of Reviews} \\ \hline
-%   A1B2C3D4E5 & John Doe & 500 \\ \hline
-%   A1B2C3D4E6 & Jane Doe & 450 \\ \hline
-%   A1B2C3D4E7 & Alice Smith & 400 \\ \hline
-%   A1B2C3D4E8 & Bob Johnson & 350 \\ \hline
-%   A1B2C3D4E9 & Mary Brown & 300 \\ \hline
-%   A1B2C3D4F0 & David Wilson & 250 \\ \hline
-%   A1B2C3D4F1 & Sarah Lee & 200 \\ \hline
-%   A1B2C3D4F2 & Michael Davis & 150 \\ \hline
-%   A1B2C3D4F3 & Laura Miller & 100 \\ \hline
-%   A1B2C3D4F4 & Kevin Moore & 50 \\ \hline
-%   \end{tabular}
-
-%   \caption{Top 10 Most Active Users}
-%   \label{table:most_active_users}
-%   \end{table}
-
-The most active users have contributed a significant number of reviews to the dataset, indicating their engagement and participation in reviewing products. These users play a crucial role in providing feedback and insights on the products, which can help other users make informed decisions.
-
+The word cloud in \autoref{fig:word_cloud} visualizes the most common words in review titles. It highlights the prevalence of star ratings, positive adjectives, and product-related terms, indicating customers' focus on ratings, overall satisfaction, and product functionality in their review titles.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{img/wordcloud.png}
+\caption{Word Cloud of Review Titles}
+\label{fig:word_cloud}
+\end{figure}
 
 \section{Methodology}
 Our approach consists of several interconnected stages, each contributing to the overall goal of creating an LLM-enhanced knowledge graph-based recommendation system.
 
-\subsection{Data Acquisition and Preprocessing}
+\subsection{Data Acquisition and Preprocessing} 
+We will prepare the Amazon Reviews 2023 dataset first.
 \begin{enumerate}
     \item \textbf{Dataset Acquisition:} 
     \begin{itemize}
         \item Obtain the Amazon Reviews 2023 dataset from the Hugging Face Hub.
         \item The dataset includes product reviews, metadata, and user information across multiple categories.
+        \item We will focus on a specific category (e.g., Video Games) for detailed analysis and model development.
     \end{itemize}
     
     \item \textbf{Data Cleaning and Normalization:}
@@ -351,70 +331,31 @@ Our approach consists of several interconnected stages, each contributing to the
         \item Lemmatization: Reduce words to their base or dictionary form.
     \end{itemize}
     
-    \item \textbf{Feature Engineering:}
-    \begin{itemize}
-        \item Extract relevant features from review texts (e.g., sentiment scores, review length).
-        \item Create numerical representations of categorical data (e.g., one-hot encoding for product categories).
-    \end{itemize}
 \end{enumerate}
 
-\subsection{Initial Knowledge Graph Construction}
+\subsection{Baseline Knowledge Graph Construction}
+The baseline knowledge graph construction will involve creating a simple graph structure based on the existing metadata and relationships in the Amazon Reviews dataset.
 \begin{enumerate}
     \item \textbf{Entity Extraction:}
     \begin{itemize}
-        \item Identify key entities: products, users, categories, brands.
-        \item Use Named Entity Recognition (NER) techniques to extract product features and attributes from review texts and product descriptions.
-    \end{itemize}
-    
-    \item \textbf{Relationship Identification:}
-    \begin{itemize}
-        \item Establish primary relationships: user-product (purchased, reviewed), product-category, product-brand.
-        \item Infer implicit relationships based on co-occurrence patterns in reviews and product metadata.
+        \item Identify key entities: product, category, features (e.g. price, rating, etc.). 
     \end{itemize}
     
     \item \textbf{Graph Structure Design:}
     \begin{itemize}
-        \item Define node types: User, Product, Category, Brand, Feature.
-        \item Define edge types: Purchased, Reviewed, BelongsTo, HasFeature.
-        \item Implement a property graph model to store additional attributes on nodes and edges.
+        \item Define node types e.g. Product, Category, Brand, Feature.
+        \item Define edge types e.g. BelongsTo, HasFeature, CategorizedUnder.
     \end{itemize}
     
     \item \textbf{Graph Database Implementation:}
     \begin{itemize}
-        \item Choose a scalable graph database (e.g., Neo4j, JanusGraph).
+        \item Choose a scalable graph database (e.g., Neo4j).
         \item Develop efficient data ingestion pipelines to populate the graph database.
-        \item Implement indexing strategies for optimal query performance.
     \end{itemize}
 \end{enumerate}
 
-\subsection{LLM Integration and Fine-tuning}
-\begin{enumerate}
-    \item \textbf{LLM Selection:}
-    \begin{itemize}
-        \item Evaluate state-of-the-art LLMs (e.g., GPT-3, BERT, T5) based on performance metrics and resource requirements.
-        \item Consider domain-specific models pre-trained on e-commerce data if available.
-    \end{itemize}
-    
-    \item \textbf{Domain Adaptation:}
-    \begin{itemize}
-        \item Fine-tune the selected LLM on a subset of the Amazon Reviews data.
-        \item Implement continued pre-training on domain-specific corpora to enhance e-commerce understanding.
-    \end{itemize}
-    
-    \item \textbf{Task-Specific Fine-tuning:}
-    \begin{itemize}
-        \item Develop specialized models for key tasks: entity recognition, relationship extraction, sentiment analysis.
-        \item Implement few-shot learning techniques to adapt the LLM for specific product categories.
-    \end{itemize}
-    
-    \item \textbf{Prompt Engineering:}
-    \begin{itemize}
-        \item Design effective prompts for various tasks: entity extraction, relationship inference, attribute generation.
-        \item Develop a prompt library for consistent interactions with the LLM across different components of the system.
-    \end{itemize}
-\end{enumerate}
-
-\subsection{Knowledge Graph Enhancement}
+\subsection{Knowledge Graph Augmentation using LLM}
+We will then use the LLM capabilities to enrich the knowledge graph with additional entities, attributes, and relationships extracted from the review texts and product descriptions.
 \begin{enumerate}
     \item \textbf{Entity Enrichment:}
     \begin{itemize}
@@ -433,107 +374,184 @@ Our approach consists of several interconnected stages, each contributing to the
         \item Generate semantic embeddings for products and reviews using the fine-tuned LLM.
         \item Integrate these embeddings as node properties in the knowledge graph to enhance similarity computations.
     \end{itemize}
-    
-    \item \textbf{Temporal Dynamics Modeling:}
+
+\end{enumerate}
+
+
+\subsection{LLM Integration and Fine-tuning}
+\begin{enumerate}
+    \item \textbf{LLM Selection:}
     \begin{itemize}
-        \item Incorporate temporal information into the knowledge graph structure.
-        \item Use the LLM to analyze temporal patterns in user behavior and product popularity.
+        \item Evaluate state-of-the-art LLMs (e.g., GPT-3, BERT, T5) based on performance metrics and resource requirements.
     \end{itemize}
     
-    \item \textbf{Consistency Checking and Conflict Resolution:}
+    \item \textbf{Domain Adaptation:}
     \begin{itemize}
-        \item Implement LLM-based methods to identify inconsistencies in the knowledge graph.
-        \item Develop a conflict resolution mechanism that combines LLM insights with graph-based heuristics.
+        \item Fine-tune the selected LLM on a subset of the Amazon Reviews data if necessary.
+    \end{itemize}
+    
+    \item \textbf{Task-Specific Fine-tuning:}
+    \begin{itemize}
+        \item Develop specialized models for key tasks: entity recognition, relationship extraction, sentiment analysis.
+        \item Implement few-shot learning techniques to adapt the LLM for specific product categories.
+    \end{itemize}
+    
+    \item \textbf{Prompt Engineering:}
+    \begin{itemize}
+        \item Design effective prompts for various tasks: entity extraction, relationship inference, attribute generation.
+        \item Develop a prompt library for consistent interactions with the LLM across different components of the system.
     \end{itemize}
 \end{enumerate}
+
 
 \subsection{Graph Embedding and Recommendation Algorithm Development}
 \begin{enumerate}
     \item \textbf{Graph Embedding:}
     \begin{itemize}
-        \item Implement and compare multiple graph embedding techniques (e.g., TransE, RotatE, ComplEx).
-        \item Develop a hybrid embedding approach that combines structural graph embeddings with LLM-generated semantic embeddings.
+        \item Implement a graph embedding model (e.g., TransE, ComplEx) to learn structured representations of entities and relationships in the knowledge graph.
     \end{itemize}
     
     \item \textbf{Recommendation Algorithm Design:}
     \begin{itemize}
-        \item Develop a hybrid recommendation algorithm that combines:
-        \begin{itemize}
-            \item Graph-based methods (e.g., random walks, spreading activation)
-            \item Collaborative filtering using graph embeddings
-            \item Content-based filtering using LLM-generated product representations
-        \end{itemize}
-        \item Implement attention mechanisms to weight different components of the hybrid algorithm dynamically.
+        \item Implement a graph-based recommendation algorithm that leverages the graph embeddings as a side information source.
+        \item Combine traditional collaborative filtering with graph-based approach.
     \end{itemize}
     
-    \item \textbf{Personalization:}
-    \begin{itemize}
-        \item Incorporate user history and preferences into the recommendation process using subgraph extraction techniques.
-        \item Develop user embedding methods that capture long-term preferences and short-term intents.
-    \end{itemize}
-    
-    \item \textbf{Contextual Awareness:}
-    \begin{itemize}
-        \item Integrate contextual factors (e.g., time, device, location) into the recommendation algorithm.
-        \item Use the LLM to generate context-aware product descriptions and explanations.
-    \end{itemize}
-    
-    \item \textbf{Diversity and Serendipity:}
-    \begin{itemize}
-        \item Implement diversity-aware recommendation strategies using graph-based metrics.
-        \item Leverage LLM-generated insights to introduce serendipitous recommendations.
-    \end{itemize}
 \end{enumerate}
 
 \subsection{Evaluation and Optimization}
 \begin{enumerate}
     \item \textbf{Offline Evaluation:}
     \begin{itemize}
-        \item Implement standard metrics: NDCG, MAP, MRR, Precision@k, Recall@k.
+        \item Split  data into train, validation, and test sets.
+        \item Implement standard evaluation metrics: NDCG, Precision@k, Recall@k.
+        \item Compare the peformance of the recommendation system system against baselines (e.g., standard collaborative filtering, non-LLM graph-based approaches).
         \item Develop graph-specific metrics to evaluate the quality of the knowledge graph and its impact on recommendations.
     \end{itemize}
     
-    \item \textbf{Online A/B Testing:}
-    \begin{itemize}
-        \item Design and implement A/B tests to compare the LLM-enhanced system against baseline approaches.
-        \item Monitor key performance indicators: click-through rate, conversion rate, user engagement.
-    \end{itemize}
-    
-    \item \textbf{User Studies:}
-    \begin{itemize}
-        \item Conduct qualitative user studies to evaluate the perceived quality and relevance of recommendations.
-        \item Analyze user feedback on LLM-generated explanations for recommendations.
-    \end{itemize}
-    
-    \item \textbf{Performance Optimization:}
-    \begin{itemize}
-        \item Implement caching strategies for frequently accessed graph patterns and LLM outputs.
-        \item Develop a distributed computing framework for parallel processing of graph algorithms and LLM inferences.
-    \end{itemize}
-    
-    \item \textbf{Continuous Learning and Adaptation:}
-    \begin{itemize}
-        \item Implement a feedback loop to continuously update the knowledge graph based on user interactions.
-        \item Develop mechanisms for periodic retraining of graph embeddings and fine-tuning of the LLM.
-    \end{itemize}
 \end{enumerate}
 
-\section{Conclusion}
-This methodology outlines a comprehensive approach to creating an LLM-enhanced knowledge graph-based recommendation system using the Amazon Reviews 2023 dataset. By leveraging the semantic understanding capabilities of LLMs and the structured representation of knowledge graphs, we aim to develop a more intelligent and context-aware recommendation system. Future work will focus on implementing this methodology and conducting extensive experiments to validate its effectiveness in real-world e-commerce scenarios.
+\section{Experiments}
+
+To evaluate the effectiveness of our LLM-enhanced knowledge graph-based recommendation system, we will conduct a series of experiments. These experiments are designed to assess the impact of various components of our system and compare its performance against baseline methods.
+
+\subsection{Experimental Setup}
+
+\subsubsection{Dataset}
+We will use the Amazon Reviews 2023 dataset, focusing on the Video Games category. The dataset will be split into 70\% training, 15\% validation, and 15\% test sets, ensuring temporal consistency to simulate real-world scenarios.
+
+\subsubsection{Baselines}
+We will compare our proposed method against the following baselines:
+\begin{itemize}
+    \item Collaborative Filtering (CF): A standard matrix factorization-based CF approach.
+    \item Content-Based Filtering (CBF): Using TF-IDF vectors from product descriptions.
+    \item Simple Graph-Based Recommendation (SGR): A graph-based method without LLM enhancements.
+\end{itemize}
+
+\subsubsection{Evaluation Metrics}
+We will use the following metrics for evaluation:
+\begin{itemize}
+    \item Normalized Discounted Cumulative Gain (NDCG@k) for k = 5, 10
+    \item Precision@k and Recall@k for k = 5, 10
+\end{itemize}
+
+\subsection{Experiment 1: Impact of LLM-based Knowledge Graph Augmentation}
+
+This experiment will aim to evaluate the effectiveness of using LLM for knowledge graph augmentation.
+
+\subsubsection{Method}
+We will compare three versions of our system:
+\begin{enumerate}
+    \item Baseline KG: Using only metadata for graph construction.
+    \item LLM-Entity KG: Baseline KG augmented with LLM-extracted entities.
+    \item Full LLM-KG: LLM-Entity KG further augmented with LLM-inferred relationships.
+\end{enumerate}
+
+\subsubsection{Expected Outcome}
+We will present a table or graph showing the performance metrics for each version. The discussion will focus on the impact of LLM-based augmentation on recommendation quality.
+
+% \subsection{Experiment 2: Comparison of Graph Embedding Techniques}
+
+% This experiment will compare different graph embedding techniques to determine the most effective approach for our recommendation system.
+
+% \subsubsection{Method}
+% We will test the following graph embedding methods:
+% \begin{itemize}
+%     \item TransE
+%     \item ComplEx
+%     \item RotatE
+%     \item DistMult
+% \end{itemize}
+
+% \subsubsection{Expected Outcome}
+% We will include a table or graph comparing the performance of different embedding techniques. The discussion will cover the strengths and weaknesses of each embedding technique in the context of our recommendation task.
+
+\subsection{Experiment 2: LLM Fine-tuning Strategies}
+
+This experiment will explore different fine-tuning strategies for the LLM to optimize its performance in knowledge graph augmentation and recommendation tasks.
+
+\subsubsection{Method}
+We will compare the following fine-tuning approaches:
+\begin{itemize}
+    \item No fine-tuning (off-the-shelf LLM)
+    \item Full fine-tuning on Amazon Reviews data
+    \item Task-specific fine-tuning (entity extraction, relationship inference)
+    \item Few-shot learning with prompt engineering
+\end{itemize}
+
+\subsubsection{Expected Outcome}
+We will present a table or graph showing the performance of each fine-tuning strategy. The discussion will focus on the trade-offs between different fine-tuning strategies in terms of performance and computational requirements.
+
+\subsection{Experiment 3: Scalability and Efficiency Analysis}
+
+This experiment will assess the scalability and computational efficiency of our proposed system compared to baseline methods.
+
+\subsubsection{Method}
+We will measure the following metrics:
+\begin{itemize}
+    \item Training time
+    \item Inference time for recommendations
+    \item Memory usage
+    \item Scaling behavior with increasing dataset size
+\end{itemize}
+
+\subsubsection{Expected Outcome}
+We will include graphs or tables showing scalability and efficiency metrics. The discussion will cover the practical implications of the scalability and efficiency results.
+
+% \subsection{Experiment 5: Cold Start Problem}
+
+% This experiment will evaluate how well our system handles the cold start problem compared to baseline methods.
+
+% \subsubsection{Method}
+% We will simulate cold start scenarios by:
+% \begin{itemize}
+%     \item Removing a subset of users/items from the training data
+%     \item Evaluating recommendations for these "new" users/items
+% \end{itemize}
+
+% \subsubsection{Expected Outcome}
+% We will present a table or graph comparing cold start performance. The discussion will focus on how the LLM-enhanced knowledge graph approach addresses the cold start problem.
+
+% \subsection{Conclusion}
+% Upon completion of these experiments, we will summarize the key findings and their implications for the proposed recommendation system. This comprehensive evaluation will provide insights into the effectiveness of our LLM-enhanced knowledge graph-based approach and its potential advantages over existing methods.
+% \section{Conclusion}
 
 
 \section{Conclusion}
 
-This document provides a comprehensive overview of the literature review and exploratory data analysis conducted for the first deliverable of the Major Research Project. The literature review covers recent advancements in knowledge graph construction, embedding, and recommendation systems, highlighting the integration of large language models with knowledge graphs to enhance the quality and efficiency of knowledge representation and recommendation. The exploratory data analysis provides insights into the Amazon Reviews'23 dataset, including the distribution of ratings, the most reviewed products, and the most active users. The analysis aims to provide a deeper understanding of the dataset and inform the subsequent steps in the research project.
+This document provides a comprehensive overview of the methodology conducted for the second deliverable of the Major Research Project.
 
-The literature review and exploratory data analysis lay the foundation for the research project, setting the stage for further investigation into the use of large language models to enhance knowledge graph construction and recommendation systems. The insights gained from the analysis will guide the development of novel methods and techniques to improve the performance and interpretability of recommendation systems, paving the way for more effective and scalable knowledge-based recommendations.
+This methodology outlines a comprehensive approach to creating an LLM-enhanced knowledge graph-based recommendation system using the Amazon Reviews 2023 dataset. 
+
+By leveraging the semantic understanding capabilities of LLMs and the structured representation of knowledge graphs, we aim to develop a more intelligent and context-aware recommendation system.
+
 
 \section{Future Work}
 
-The next steps in the research project will focus on developing a novel method to integrate large language models with knowledge graphs for recommendation systems. The research will explore the use of large language models for knowledge graph embedding, completion, and construction to enhance the quality and efficiency of knowledge representation. The goal is to develop an end-to-end approach that leverages the power of large language models and graph neural networks to improve the performance and interpretability of recommendation systems.
+The next steps in the research project will focus on the implementation and evaluation of the proposed methodology. 
 
+Future work will focus on implementing this methodology and conducting extensive experiments to validate its effectiveness in real-world e-commerce scenarios.
 
-\section{References}
 \printbibliography
 \clearpage
 
