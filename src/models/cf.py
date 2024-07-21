@@ -6,10 +6,11 @@ from implicit.als import AlternatingLeastSquares
 from implicit.evaluation import precision_at_k, mean_average_precision_at_k, ndcg_at_k
 from scipy.sparse import csr_matrix
 from tqdm import tqdm
+from itertools import product
 
 
 class RecommendationSystem:
-    def __init__(self, factors=100, regularization=0.01, alpha=1.0, iterations=50):
+    def __init__(self, factors=1000, regularization=0.01, alpha=1.0, iterations=50):
         self.model = AlternatingLeastSquares(
             factors=factors,
             regularization=regularization,
@@ -50,6 +51,35 @@ class RecommendationSystem:
             for item, _ in recommendations
         ]
 
+    def evaluate(self, test_df, k=10):
+        # Create a user-item interaction matrix for the test set
+        test_user_item = csr_matrix(
+            (
+                test_df["rating"].values,
+                (
+                    self.item_encoder.transform(test_df["parent_asin"]),
+                    self.user_encoder.transform(test_df["user_id"]),
+                ),
+            )
+        )
+
+        # Calculate metrics
+        precision = precision_at_k(
+            self.model, self.item_user_data, test_user_item, k, show_progress=True
+        )
+        map_score = mean_average_precision_at_k(
+            self.model, self.item_user_data, test_user_item, k, show_progress=True
+        )
+        ndcg = ndcg_at_k(
+            self.model, self.item_user_data, test_user_item, k, show_progress=True
+        )
+
+        # round the metrics to 4 decimal places
+        precision = round(precision, 4)
+        map_score = round(map_score, 4)
+        ndcg = round(ndcg, 4)
+        return {f"precision@{k}": precision, f"MAP@{k}": map_score, f"NDCG@{k}": ndcg}
+
 
 def load_and_preprocess_data(file_path):
     print(f"Loading data from {file_path}...")
@@ -60,55 +90,21 @@ def load_and_preprocess_data(file_path):
     return df
 
 
-def train_model(train_df):
+def train_model(train_df, factors=100, regularization=0.01, alpha=1.0):
     print("Training the model...")
-    model = RecommendationSystem()
+    model = RecommendationSystem(
+        factors=factors, regularization=regularization, alpha=alpha
+    )
     model.fit(train_df)
     return model
 
-def evaluate_model(model, test_df, k=10):
-    print(f"Evaluating the model (k={k})...")
-    
-    # Create a user-item interaction matrix for the test set
-    test_user_item = csr_matrix((
-        test_df["rating"].values,
-        (
-            model.user_encoder.transform(test_df["user_id"]),
-            model.item_encoder.transform(test_df["parent_asin"])
-        )
-    ))
-
-    user_ids = test_df["user_id"].unique()
-    user_idxs = model.user_encoder.transform(user_ids)
-
-    all_recommendations = []
-    for user_id in tqdm(user_ids, desc="Generating recommendations"):
-        user_idx = model.user_encoder.transform([user_id])[0]
-        user_items = model.item_user_data[user_idx]
-        recs = model.model.recommend(user_idx, user_items, N=k, filter_already_liked_items=False)
-        print(recs)
-        all_recommendations.append([item for item, _ in recs])
-
-    # Convert recommendations to item IDs
-    all_recommendations_ids = np.array([
-        [model.item_encoder.transform([item])[0] if item in model.item_encoder.classes_ else -1 for item in user_recs]
-        for user_recs in all_recommendations
-    ])
-
-    # Calculate metrics
-    precision = precision_at_k(test_user_item, all_recommendations_ids, user_idxs, k=k)
-    map_score = mean_average_precision_at_k(test_user_item, all_recommendations_ids, user_idxs, k=k)
-    ndcg = ndcg_at_k(test_user_item, all_recommendations_ids, user_idxs, k=k)
-
-    return {f"precision@{k}": precision, f"MAP@{k}": map_score, f"NDCG@{k}": ndcg}
 
 def filter_seen_items(train_df, test_df):
-    seen_items = set(train_df['parent_asin'])
-    return test_df[test_df['parent_asin'].isin(seen_items)]
+    seen_items = set(train_df["parent_asin"])
+    return test_df[test_df["parent_asin"].isin(seen_items)]
+
 
 def main():
-    print("Starting the recommendation system...")
-
     # Load and preprocess data
     train_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/Video_Games.train.csv"
     valid_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/Video_Games.valid.csv"
@@ -118,24 +114,44 @@ def main():
     valid_df = load_and_preprocess_data(valid_file)
     test_df = load_and_preprocess_data(test_file)
 
-    # Train the model
-    model = train_model(train_df)
+    # Define hyperparameters grid
+    hyperparameters_grid = {
+        "factors": [10, 50, 100, 1000, 2000],
+        "regularization": [0.01],
+        "alpha": [1.0],
+    }
 
-    valid_df_1000 = filter_seen_items(train_df, valid_df.head(1000))
-    test_df_1000 = filter_seen_items(train_df, test_df.head(1000))
+    best_validation_score = float("-inf")
+    best_hyperparameters = {}
+    best_model = None
+    k = 10
 
-    # Evaluate the model
-    print("Evaluating on validation set...")
-    validation_metrics = evaluate_model(model, valid_df_1000)
-    print("Evaluating on test set...")
-    test_metrics = evaluate_model(model, test_df_1000)
+    # Perform grid search
+    for combination in product(*hyperparameters_grid.values()):
+        hyperparameters = dict(zip(hyperparameters_grid.keys(), combination))
+        print(f"Training with hyperparameters: {hyperparameters}")
 
-    print("\nValidation Metrics:")
-    print(validation_metrics)
-    print("\nTest Metrics:")
+        model = train_model(train_df, **hyperparameters)
+
+        valid_df_filtered = filter_seen_items(train_df, valid_df)
+        validation_metrics = model.evaluate(valid_df_filtered, k=k)
+
+        if validation_metrics[f"precision@{k}"] > best_validation_score:
+            best_validation_score = validation_metrics[f"precision@{k}"]
+            best_hyperparameters = hyperparameters
+            best_model = model
+
+    # Evaluate the best model on the test set
+    test_df_filtered = filter_seen_items(train_df, test_df)
+    test_metrics = best_model.evaluate(test_df_filtered)
+
+    print(f"Best Hyperparameters: {best_hyperparameters}")
+    print("\nValidation Metrics of Best Model:")
+    print(
+        validation_metrics
+    )  # This should be the metrics of the best model on the validation set
+    print("\nTest Metrics of Best Model:")
     print(test_metrics)
-
-    print("Recommendation system process completed.")
 
 
 if __name__ == "__main__":
