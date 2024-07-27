@@ -62,7 +62,7 @@ def evaluate(model, dataloader, Ks, device):
                     metrics_dict[k][m].append(batch_metrics[k][m])
             pbar.update(1)
 
-    cf_scores = np.concatenate(cf_scores, axis=0)
+    # cf_scores = np.concatenate(cf_scores, axis=0)
     for k in Ks:
         for m in metric_names:
             metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
