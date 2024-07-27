@@ -11,7 +11,7 @@ def load_ratings(file):
         for line in tqdm(fp, desc='Load ratings'):
             try:
                 dp = json.loads(line.strip())
-                item, user, rating, time = dp['parent_asin'], dp['user_id'], dp['rating'], dp['sortTimestamp']
+                item, user, rating, time = dp['parent_asin'], dp['user_id'], dp['rating'], dp['timestamp']
                 inters.append((user, item, float(rating), int(time)))
             except ValueError:
                 print(line)
@@ -119,8 +119,8 @@ def write_rating_only(output_path, prefix, inters, k):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-k', type=int, default=5, help='k-core filtering')
-    parser.add_argument('--input_path', type=str, default='AmazonRaw/review_categories/')
-    parser.add_argument('--output_path', type=str, default='release_amazon/')
+    parser.add_argument('--input_path', type=str)
+    parser.add_argument('--output_path', type=str)
     return parser.parse_args()
 
 
@@ -129,8 +129,8 @@ if __name__ == '__main__':
 
     all_files = os.listdir(args.input_path)
     for single_file in all_files:
-        assert single_file.endswith('.json')
-        prefix = single_file[:-len('.json')]
+        assert single_file.endswith('.jsonl')
+        prefix = single_file[:-len('.jsonl')]
 
         args.file_path = os.path.join(args.input_path, single_file)
         kcore_rating_inters, rating_inters = preprocess_rating(args)
