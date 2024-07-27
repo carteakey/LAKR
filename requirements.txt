@@ -11,3 +11,5 @@ langchain-experimental
 neo4j
 jupyter
 json-repair
+tabulate
+torch
