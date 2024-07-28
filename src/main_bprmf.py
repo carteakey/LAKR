@@ -208,7 +208,7 @@ def train(args):
                 args.data_name,
                 "BPRMF",
             )
-            os.makedirs(temp_save_path, exist_ok=True)
+            os.makedirs(temp_save_path.rsplit("/", 1)[0], exist_ok=True)
             np.savez(
                 temp_save_path,
                 user_embed=user_embed,
