@@ -201,9 +201,9 @@ def train(args):
                 best_epoch = epoch
 
             # Save pretrained embeddings
-            user_embed = model.weights["user_embed"].detach().cpu().numpy()
-            entity_embed = model.weights["entity_embed"].detach().cpu().numpy()
-            relation_embed = model.weights["relation_embed"].detach().cpu().numpy()
+            user_embed = model.user_embed.detach().cpu().numpy()
+            entity_embed = model.entity_embed.detach().cpu().numpy()
+            relation_embed = model.relation_embed.detach().cpu().numpy()
             temp_save_path = "%spretrain/%s/%s.npz" % (
                 args.data_path,
                 args.dataset,
