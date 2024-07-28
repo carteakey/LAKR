@@ -205,8 +205,8 @@ def train(args):
             item_embed = model.item_embed.weight.detach().cpu().numpy()
             temp_save_path = "%spretrain/%s/%s.npz" % (
                 args.data_dir,
-                args.dataset,
-                args.model_type,
+                args.data_name,
+                "BPRMF",
             )
             os.makedirs(temp_save_path, exist_ok=True)
             np.savez(
