@@ -470,6 +470,39 @@ We will compare three versions of our system:
 \subsubsection{Expected Outcome}
 We will present a table or graph showing the performance metrics for each version. The discussion will focus on the impact of LLM-based augmentation on recommendation quality.
 
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|r|}
+        \hline
+        \textbf{Metric}             & \textbf{Value} \\ \hline
+        Total Nodes                 & 157828         \\
+        Total Relationships         & 331029         \\
+        Graph Density               & 2.7e-05        \\
+        % Avg Clustering Coefficient  & 0              \\
+        Avg Node Properties         & 2.18           \\
+        % Avg Relationship Properties & 0.0            \\
+        % Isolated Nodes              & 0              \\
+        Min Degree                  & 1              \\
+        Max Degree                  & 37911          \\
+        Avg Degree                  & 4.19           \\
+        Median Degree               & 1.0            \\
+        \hline
+        Nodes by Label              &                \\
+        \quad VideoGame             & 41659          \\
+        \quad Store                 & 9545           \\
+        \quad Category              & 165            \\
+        \quad Feature               & 106459         \\
+        \hline
+        Relationships by Type       &                \\
+        \quad BELONGS\_TO            & 41837          \\
+        \quad CATEGORIZED\_UNDER     & 162432         \\
+        \quad HAS\_FEATURE           & 126760         \\
+        \hline
+    \end{tabular}
+    \caption{Neo4j Graph Statistics}
+    \label{tab:neo4j-stats}
+\end{table}
+
 % \subsection{Experiment 2: Comparison of Graph Embedding Techniques}
 
 % This experiment will compare different graph embedding techniques to determine the most effective approach for our recommendation system.

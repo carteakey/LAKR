@@ -1,6 +1,8 @@
 .DS_Store
 .obsidian
 
+__pycache__
+
 *.aux
 *.bbl
 *.blg
@@ -18,10 +20,16 @@
 *.lof
 
 .venv
-datasets/*.csv
+datasets/**/*.csv
 db/neo4j/data/
 db/neo4j/plugins
 
 *.duckdb
+*.json
+*.tmp
+
+*.pth
+*.jsonl
+*.tsv
 
 archive
