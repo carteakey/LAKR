@@ -33,9 +33,10 @@ def evaluate(model, dataloader, Ks, device):
     n_items = dataloader.n_items
     item_ids = torch.arange(n_items, dtype=torch.long).to(device)
 
-    cf_scores = []
     metric_names = ["precision", "recall", "ndcg"]
     metrics_dict = {k: {m: [] for m in metric_names} for k in Ks}
+
+    max_k = max(Ks)
 
     with tqdm(total=len(user_ids_batches), desc="Evaluating Iteration") as pbar:
         for batch_user_ids in user_ids_batches:
@@ -46,27 +47,28 @@ def evaluate(model, dataloader, Ks, device):
                     batch_user_ids, item_ids, is_train=False
                 )  # (n_batch_users, n_items)
 
-            batch_scores = batch_scores.cpu()
+            batch_scores = batch_scores.cpu().numpy()
+
+            # Use np.argpartition to efficiently select top-k items
+            top_k_items = np.argpartition(-batch_scores, max_k, axis=1)[:, :max_k]
+
             batch_metrics = calc_metrics_at_k(
-                batch_scores,
+                top_k_items,
                 train_user_dict,
                 test_user_dict,
                 batch_user_ids.cpu().numpy(),
-                item_ids.cpu().numpy(),
                 Ks,
             )
 
-            # cf_scores.append(batch_scores.numpy())
             for k in Ks:
                 for m in metric_names:
                     metrics_dict[k][m].append(batch_metrics[k][m])
             pbar.update(1)
 
-    # cf_scores = np.concatenate(cf_scores, axis=0)
     for k in Ks:
         for m in metric_names:
             metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
-    return cf_scores, metrics_dict
+    return [], metrics_dict
 
 
 def train(args):
@@ -197,6 +199,24 @@ def train(args):
                 save_model(model, args.save_dir, epoch, best_epoch)
                 logging.info("Save model on epoch {:04d}!".format(epoch))
                 best_epoch = epoch
+
+            # Save pretrained embeddings
+            user_embed = model.weights["user_embed"].detach().cpu().numpy()
+            entity_embed = model.weights["entity_embed"].detach().cpu().numpy()
+            relation_embed = model.weights["relation_embed"].detach().cpu().numpy()
+            temp_save_path = "%spretrain/%s/%s.npz" % (
+                args.data_path,
+                args.dataset,
+                args.model_type,
+            )
+            os.makedirs(temp_save_path, exist_ok=True)
+            np.savez(
+                temp_save_path,
+                user_embed=user_embed,
+                entity_embed=entity_embed,
+                relation_embed=relation_embed,
+            )
+            print("save the weights of BPRMF in path: ", temp_save_path)
 
     # save metrics
     metrics_df = [epoch_list]
