@@ -203,7 +203,7 @@ def train(args):
             # Save pretrained embeddings
             user_embed = model.user_embed.weight.detach().cpu().numpy()
             item_embed = model.item_embed.weight.detach().cpu().numpy()
-            temp_save_path = "%spretrain/%s/%s.npz" % (
+            temp_save_path = "%s/%s/pretrain/%s.npz" % (
                 args.data_dir,
                 args.data_name,
                 "BPRMF",
