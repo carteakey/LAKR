@@ -30,6 +30,7 @@ db/neo4j/plugins
 
 *.pth
 *.jsonl
+*.txt 
 *.tsv
 
 archive
