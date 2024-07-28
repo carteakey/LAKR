@@ -201,11 +201,10 @@ def train(args):
                 best_epoch = epoch
 
             # Save pretrained embeddings
-            user_embed = model.user_embed.detach().cpu().numpy()
-            entity_embed = model.entity_embed.detach().cpu().numpy()
-            relation_embed = model.relation_embed.detach().cpu().numpy()
+            user_embed = model.user_embed.weight.detach().cpu().numpy()
+            item_embed = model.item_embed.weight.detach().cpu().numpy()
             temp_save_path = "%spretrain/%s/%s.npz" % (
-                args.data_path,
+                args.data_dir,
                 args.dataset,
                 args.model_type,
             )
@@ -213,8 +212,7 @@ def train(args):
             np.savez(
                 temp_save_path,
                 user_embed=user_embed,
-                entity_embed=entity_embed,
-                relation_embed=relation_embed,
+                item_embed=item_embed,
             )
             print("save the weights of BPRMF in path: ", temp_save_path)
 
