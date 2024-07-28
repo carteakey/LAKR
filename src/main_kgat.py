@@ -34,9 +34,10 @@ def evaluate(model, dataloader, Ks, device):
     n_items = dataloader.n_items
     item_ids = torch.arange(n_items, dtype=torch.long).to(device)
 
-    cf_scores = []
     metric_names = ["precision", "recall", "ndcg"]
     metrics_dict = {k: {m: [] for m in metric_names} for k in Ks}
+
+    max_k = max(Ks)
 
     with tqdm(total=len(user_ids_batches), desc="Evaluating Iteration") as pbar:
         for batch_user_ids in user_ids_batches:
@@ -44,31 +45,31 @@ def evaluate(model, dataloader, Ks, device):
 
             with torch.no_grad():
                 batch_scores = model(
-                    batch_user_ids, item_ids, mode="predict"
+                    batch_user_ids, item_ids, is_train=False
                 )  # (n_batch_users, n_items)
 
-            batch_scores = batch_scores.cpu()
+            batch_scores = batch_scores.cpu().numpy()
+
+            # Use np.argpartition to efficiently select top-k items
+            top_k_items = np.argpartition(-batch_scores, max_k, axis=1)[:, :max_k]
+
             batch_metrics = calc_metrics_at_k(
-                batch_scores,
+                top_k_items,
                 train_user_dict,
                 test_user_dict,
                 batch_user_ids.cpu().numpy(),
-                item_ids.cpu().numpy(),
                 Ks,
             )
 
-            # cf_scores.append(batch_scores.numpy())
             for k in Ks:
                 for m in metric_names:
                     metrics_dict[k][m].append(batch_metrics[k][m])
             pbar.update(1)
 
-    # cf_scores = np.concatenate(cf_scores, axis=0)
     for k in Ks:
         for m in metric_names:
             metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
-    return cf_scores, metrics_dict
-
+    return [], metrics_dict
 
 def train(args):
     # seed
