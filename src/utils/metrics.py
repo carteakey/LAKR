@@ -114,7 +114,8 @@ def logloss(ground_truth, prediction):
     logloss = log_loss(np.asarray(ground_truth), np.asarray(prediction))
     return logloss
 
-def calc_metrics_at_k(cf_scores, train_user_dict, test_user_dict, user_ids, item_ids, Ks):
+
+def calc_metrics_at_k_1(cf_scores, train_user_dict, test_user_dict, user_ids, item_ids, Ks):
     test_pos_item_binary = np.zeros([len(user_ids), len(item_ids)], dtype=np.float32)
     missing_users_indices = []
 
@@ -151,3 +152,36 @@ def calc_metrics_at_k(cf_scores, train_user_dict, test_user_dict, user_ids, item
         metrics_dict[k]['ndcg']      = ndcg_at_k_batch(binary_hit, k)
     
     return metrics_dict
+
+def calc_metrics_at_k(top_k_items, train_user_dict, test_user_dict, user_ids, Ks):
+    max_k = max(Ks)
+    result = {k: {'precision': [], 'recall': [], 'ndcg': []} for k in Ks}
+    
+    for i, u in enumerate(user_ids):
+        train_pos_item_list = train_user_dict.get(u, [])
+        test_pos_item_list = test_user_dict.get(u, [])
+        
+        # Remove train items from top-k items
+        top_k = top_k_items[i]
+        top_k = [item for item in top_k if item not in train_pos_item_list][:max_k]
+        
+        hits = np.isin(top_k, test_pos_item_list)
+        
+        for k in Ks:
+            hit_k = hits[:k]
+            num_hits_k = np.sum(hit_k)
+            
+            precision_k = num_hits_k / k
+            recall_k = num_hits_k / len(test_pos_item_list) if test_pos_item_list else 0
+            ndcg_k = ndcg_at_k(hit_k, k)
+            
+            result[k]['precision'].append(precision_k)
+            result[k]['recall'].append(recall_k)
+            result[k]['ndcg'].append(ndcg_k)
+    
+    return result
+
+def ndcg_at_k(hit, k):
+    dcg = np.sum(hit / np.log2(np.arange(2, len(hit) + 2)))
+    idcg = np.sum(1 / np.log2(np.arange(2, min(k, np.sum(hit)) + 2)))
+    return dcg / idcg if idcg > 0 else 0

@@ -44,7 +44,9 @@ CUDACXX=/usr/local/cuda-12/bin/nvcc CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_A
 
 python -m main_kgat --data_name amazon-reviews-23 --data_dir /home/kchauhan/repos/mds-tmu-mrp/datasets --use_pretrain 0  --test_batch_size=2000 --cf_batch_size 8192 --kg_batch_size 8192
 
-python -m main_bprmf --data_name amazon-reviews-23 --data_dir /home/kchauhan/repos/mds-tmu-mrp/datasets --n_epoch 10 --test_batch_size=2000 --use_pretrain 0
+python -m main_bprmf --data_name amazon-reviews-23 --data_dir /home/kchauhan/repos/mds-tmu-mrp/datasets --n_epoch 10 --test_batch_size=150 --use_pretrain 0
+
+ python -m main_bprmf --data_name baseline-kg --data_dir /home/kchauhan/repos/mds-tmu-mrp/datasets --n_epoch 1 --train_batch_size=32768  --test_batch_size=100 --use_pretrain 0
 
 python main_kgat.py 
 
