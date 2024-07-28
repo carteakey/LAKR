@@ -104,13 +104,16 @@ def process_kg_and_user_data(uri, username, password, output_dir, train_csv, val
 
     driver.close()
 
-# Usage
-uri = "bolt://localhost:7687"
-username = "neo4j"
-password = "tmu-2024"
-output_dir = "/home/kchauhan/repos/mds-tmu-mrp/datasets/kg"
-train_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Video_Games.train.csv"
-valid_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Video_Games.valid.csv"
-test_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Video_Games.test.csv"
+# read config from main.yaml
+import yaml
+conf = yaml.safe_load(open("/home/kchauhan/repos/mds-tmu-mrp/config/main.yaml"))
+uri = conf["neo4j"]["uri"]
+username = conf["neo4j"]["user"]
+password = conf["neo4j"]["password"]
+
+output_dir = "/home/kchauhan/repos/mds-tmu-mrp/datasets/amazon-reviews-23"
+train_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.train.csv"
+valid_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.valid.csv"
+test_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.test.csv"
 
 process_kg_and_user_data(uri, username, password, output_dir, train_csv, valid_csv, test_csv)

@@ -10,6 +10,7 @@ from tqdm import tqdm
 DB_FILE = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
 con = duckdb.connect(DB_FILE)
 
+
 def load_all_categories():
     category_filepath = hf_hub_download(
         repo_id="McAuley-Lab/Amazon-Reviews-2023",
@@ -20,6 +21,7 @@ def load_all_categories():
         all_categories = [_.strip() for _ in file.readlines()]
     return all_categories
 
+
 def create_table(table_name, columns):
     column_definitions = [
         f"{column} {'JSON' if column in ['details', 'images', 'videos', 'features'] else 'VARCHAR'}"
@@ -29,10 +31,12 @@ def create_table(table_name, columns):
     con.execute(f"DROP TABLE IF EXISTS {table_name}")
     con.execute(f"CREATE TABLE {table_name} ({column_definitions_str})")
 
+
 def clean_text(text):
     if isinstance(text, str):
         return unidecode(text)
     return text
+
 
 def process_item(item, columns):
     processed_item = {}
@@ -50,6 +54,7 @@ def process_item(item, columns):
                 processed_item[k] = clean_text(str(v))
     return processed_item
 
+
 def clean_nested_dict(d):
     if isinstance(d, dict):
         return {k: clean_nested_dict(v) for k, v in d.items()}
@@ -60,10 +65,11 @@ def clean_nested_dict(d):
     else:
         return d
 
+
 def process_dataset(dataset, table_name, columns, batch_size=1000):
     create_table(table_name, columns)
     total_items = len(dataset)
-    
+
     data_batch = []
     for item in tqdm(dataset, total=total_items, desc=f"Processing {table_name}"):
         data_batch.append(process_item(item, columns))
@@ -76,34 +82,56 @@ def process_dataset(dataset, table_name, columns, batch_size=1000):
         df = pd.DataFrame(data_batch, columns=columns)
         con.execute(f"INSERT INTO {table_name} SELECT * FROM df")
 
+
 if __name__ == "__main__":
     all_categories = load_all_categories()
 
-    all_categories = ["Video_Games"]
+    all_categories = ["Books"]
 
-    # Load item metadata
-    for category in all_categories:
-        columns = [
-            "main_category", "title", "average_rating", "rating_number", "features",
-            "description", "price", "images", "videos", "store", "categories",
-            "details", "parent_asin", "bought_together", "subtitle", "author"
-        ]
+    # # Load item metadata
+    # for category in all_categories:
+    #     columns = [
+    #         "main_category",
+    #         "title",
+    #         "average_rating",
+    #         "rating_number",
+    #         "features",
+    #         "description",
+    #         "price",
+    #         "images",
+    #         "videos",
+    #         "store",
+    #         "categories",
+    #         "details",
+    #         "parent_asin",
+    #         "bought_together",
+    #         "subtitle",
+    #         "author",
+    #     ]
 
-        print(f"Loading metadata for category: {category}")
-        meta_dataset = load_dataset(
-            "McAuley-Lab/Amazon-Reviews-2023",
-            f"raw_meta_{category}",
-            split="full",
-            trust_remote_code=True,
-        )
-        process_dataset(meta_dataset, f"raw_meta_{category}", columns)
-        print(f"Metadata for {category} loaded")
+    #     print(f"Loading metadata for category: {category}")
+    #     meta_dataset = load_dataset(
+    #         "McAuley-Lab/Amazon-Reviews-2023",
+    #         f"raw_meta_{category}",
+    #         split="full",
+    #         trust_remote_code=True,
+    #     )
+    #     process_dataset(meta_dataset, f"raw_meta_{category}", columns)
+    #     print(f"Metadata for {category} loaded")
 
     # Load reviews
     for category in all_categories:
         columns = [
-            "rating", "title", "text", "images", "asin", "parent_asin", "user_id",
-            "timestamp", "helpful_vote", "verified_purchase"
+            "rating",
+            "title",
+            "text",
+            "images",
+            "asin",
+            "parent_asin",
+            "user_id",
+            "timestamp",
+            "helpful_vote",
+            "verified_purchase",
         ]
 
         print(f"Loading reviews for category: {category}")

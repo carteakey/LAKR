@@ -1,121 +1,183 @@
+import polars as pl
 from neo4j import GraphDatabase
-import duckdb
-import ast
-import re
+from huggingface_hub import hf_hub_download
+from datasets import load_dataset
+import json
+from unidecode import unidecode
+from tqdm import tqdm
+import gc
+import logging
+from datetime import datetime
 
-# Define a function to safely parse JSON-like strings
-def safe_parse(data):
-    try:
-        return ast.literal_eval(data)
-    except (ValueError, SyntaxError):
-        return data
+# Neo4j configuration
+NEO4J_URI = "bolt://localhost:7687"
+NEO4J_USER = "neo4j"
+NEO4J_PASSWORD = "tmu-2024"
 
-# Function to safely convert values
-def safe_convert(value, type_func):
-    if value is None or value == 'None' or (isinstance(value, str) and value.strip() == ''):
-        return None
-    try:
-        return type_func(value)
-    except (ValueError, TypeError):
-        return None
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Function to clean strings
-def clean_string(s):
-    if not isinstance(s, str):
-        return s
-    # Remove or replace problematic characters
-    s = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', s)
-    # Replace other non-UTF8 characters
-    return s.encode('utf-8', errors='ignore').decode('utf-8')
+def load_all_categories():
+    category_filepath = hf_hub_download(
+        repo_id="McAuley-Lab/Amazon-Reviews-2023",
+        filename="all_categories.txt",
+        repo_type="dataset",
+    )
+    with open(category_filepath, "r") as file:
+        all_categories = [_.strip() for _ in file.readlines()]
+    return all_categories
 
-relevant_columns = ['title', 'average_rating', 'rating_number', 'description', 'price', 'store', 'parent_asin', 'subtitle', 'author', 'features', 'categories', 'details', 'bought_together']
+def clean_text(text):
+    if isinstance(text, str):
+        return unidecode(text)
+    return text
 
-# Connect to DuckDB and load the data
-conn = duckdb.connect('/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb')
-# query = f"SELECT {', '.join(relevant_columns)} FROM raw_meta_Video_Games WHERE main_category ='Video Games' AND categories NOT LIKE '%Accessories%' AND categories  LIKE '%''Games''%'"
-# Keeping only the parent_asin that are in the rating_only table
-query = f"SELECT {', '.join(relevant_columns)} FROM raw_meta_Video_Games WHERE parent_asin IN (SELECT DISTINCT parent_asin from rating_only)"
+def clean_nested_dict(d):
+    if isinstance(d, dict):
+        return {k: clean_nested_dict(v) for k, v in d.items()}
+    elif isinstance(d, list):
+        return [clean_nested_dict(v) for v in d]
+    elif isinstance(d, str):
+        return clean_text(d)
+    else:
+        return d
 
-data_cleaned = conn.execute(query).fetchdf()
+def parse_json_field(field_value):
+    if isinstance(field_value, str):
+        # Replace single quotes with double quotes for JSON parsing
+        field_value = field_value.replace("'", '"')
+        try:
+            parsed_json = json.loads(field_value)
+            return clean_nested_dict(parsed_json)
+        except (json.JSONDecodeError, TypeError):
+            return clean_text(field_value)
+    return field_value
 
-# Apply safe_parse to relevant columns
-for col in ['features', 'categories', 'details', 'bought_together']:
-    data_cleaned[col] = data_cleaned[col].apply(safe_parse)
+def process_item(item, columns):
+    processed_item = {}
+    for k, v in item.items():
+        if k in columns:
+            if k in ["details", "images", "videos", "features", "author", "categories"]:
+                processed_item[k] = parse_json_field(v)
+            else:
+                processed_item[k] = clean_text(str(v))
+    return processed_item
 
-# Connect to Neo4j
-uri = "bolt://localhost:7687"
-driver = GraphDatabase.driver(uri, auth=("neo4j", "tmu-2024"))
-
-def create_knowledge_graph(tx, video_game, properties, relationships):
-    # Create the video game node
-    query = """
-    MERGE (vg:VideoGame {title: $title})
-    SET vg += $properties
-    """
-    tx.run(query, title=video_game, properties=properties)
-
-    # Create relationships
-    for rel in relationships:
-        query = f"""
-        MERGE (n:{rel['type']} {{name: $name}})
-        MERGE (vg:VideoGame {{title: $title}})
-        MERGE (vg)-[:{rel['relationship']}]->(n)
-        """
-        tx.run(query, name=clean_string(rel['name']), title=video_game)
-
-# Function to create the graph from the dataframe
-def create_graph_from_dataframe(driver, df):
+def create_constraints_and_indexes(driver):
     with driver.session() as session:
-        for index, row in df.iterrows():
-            video_game = row['title']
-            properties = {
-                'average_rating': safe_convert(row['average_rating'], float),
-                'rating_number': safe_convert(row['rating_number'], int),
-                'description': clean_string(str(row['description'])) if row['description'] is not None else None,
-                'price': safe_convert(row['price'], float),
-                'store': clean_string(str(row['store'])) if row['store'] is not None else None,
-                'parent_asin': clean_string(str(row['parent_asin'])) if row['parent_asin'] is not None else None,
-                # 'subtitle': clean_string(str(row['subtitle'])) if row['subtitle'] is not None else None,
-                # 'author': clean_string(str(row['author'])) if row['author'] is not None else None
-            }
-            properties = {k: v for k, v in properties.items() if v is not None}
-            
-            relationships = []
+        session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (b:Book) REQUIRE b.title IS UNIQUE")
+        session.run("CREATE INDEX IF NOT EXISTS FOR (b:Book) ON (b.parent_asin)")
+        session.run("CREATE INDEX IF NOT EXISTS FOR (a:Author) ON (a.name)")
+        session.run("CREATE INDEX IF NOT EXISTS FOR (p:Publisher) ON (p.name)")
+        session.run("CREATE INDEX IF NOT EXISTS FOR (c:Category) ON (c.name)")
 
-            # Add store relationship
-            if row['store']:
-                relationships.append({'type': 'Store', 'name': row['store'], 'relationship': 'BELONGS_TO'})
-            
-            # Add feature relationships
-            if isinstance(row['features'], list):
-                for feature in row['features']:
-                    relationships.append({'type': 'Feature', 'name': clean_string(str(feature)), 'relationship': 'HAS_FEATURE'})
-            
-            # Add category relationships
-            if isinstance(row['categories'], list):
-                for category in row['categories']:
-                    relationships.append({'type': 'Category', 'name': clean_string(str(category)), 'relationship': 'CATEGORIZED_UNDER'})
-            
-            # # Add detail relationships
-            # if isinstance(row['details'], dict):
-            #     for detail_key, detail_value in row['details'].items():
-            #         detail = f"{clean_string(str(detail_key))}: {clean_string(str(detail_value))}"
-            #         relationships.append({'type': 'Detail', 'name': detail, 'relationship': 'HAS_DETAIL'})
-            
-            # # Add bought together relationships
-            # if isinstance(row['bought_together'], list):
-            #     for item in row['bought_together']:
-            #         relationships.append({'type': 'BoughtTogetherItem', 'name': clean_string(str(item)), 'relationship': 'BOUGHT_TOGETHER_WITH'})
-            
-            # # Add author relationship
-            # if row['author']:
-            #     relationships.append({'type': 'Author', 'name': row['author'], 'relationship': 'CREATED_BY'})
-            
-            session.execute_write(create_knowledge_graph, video_game, properties, relationships)
+def create_graph_batch(tx, records):
+    query = """
+    UNWIND $records AS record
+    MERGE (b:Book {title: record.book.title})
+    SET b += record.book
+    WITH b, record
+    FOREACH (authorName IN CASE WHEN record.author IS NOT NULL THEN [record.author] ELSE [] END |
+        MERGE (a:Author {name: authorName})
+        MERGE (b)-[:WRITTEN_BY]->(a)
+    )
+    FOREACH (publisherName IN CASE WHEN record.publisher IS NOT NULL THEN [record.publisher] ELSE [] END |
+        MERGE (p:Publisher {name: publisherName})
+        MERGE (b)-[:PUBLISHED_BY]->(p)
+    )
+    FOREACH (categoryName IN record.categories |
+        MERGE (c:Category {name: categoryName})
+        MERGE (b)-[:CATEGORIZED_UNDER]->(c)
+    )
+    """
+    tx.run(query, records=records)
 
-# Create the graph from the cleaned dataframe
-create_graph_from_dataframe(driver, data_cleaned)
+def process_batch(batch, columns):
+    records = []
+    for item in batch:
+        processed_item = process_item(item, columns)
+        book = {
+            'title': processed_item.get('title'),
+            'parent_asin': processed_item.get('parent_asin')
+        }
+        
+        author = processed_item['author']['name'] if isinstance(processed_item.get('author'), dict) and 'name' in processed_item['author'] else None
+        
+        publisher = None
+        if isinstance(processed_item.get('details'), dict) and 'Publisher' in processed_item['details']:
+            publisher = processed_item['details']['Publisher'].split(';')[0].strip()
+        
+        categories = processed_item.get('categories', [])
+        
+        records.append({
+            'book': book,
+            'author': author,
+            'publisher': publisher,
+            'categories': categories
+        })
+    return records
 
-# Close the connections
-driver.close()
-conn.close()
+def process_dataset(dataset, driver, columns, batch_size=1000):
+    total_items = len(dataset)
+    total_batches = (total_items + batch_size - 1) // batch_size
+    
+    start_time = datetime.now()
+    items_processed = 0
+    
+    with driver.session() as session:
+        for i in tqdm(range(0, total_items, batch_size), total=total_batches, desc="Processing batches"):
+            batch = [dataset[j] for j in range(i, min(i + batch_size, total_items))]
+            records = process_batch(batch, columns)
+            session.execute_write(create_graph_batch, records)
+            
+            items_processed += len(batch)
+            elapsed_time = (datetime.now() - start_time).total_seconds()
+            items_per_second = items_processed / elapsed_time if elapsed_time > 0 else 0
+            estimated_time_left = (total_items - items_processed) / items_per_second if items_per_second > 0 else 0
+            
+            logger.info(f"Processed {items_processed}/{total_items} items. "
+                        f"Speed: {items_per_second:.2f} items/second. "
+                        f"Estimated time left: {estimated_time_left/60:.2f} minutes.")
+            
+            # Force garbage collection to free up memory
+            gc.collect()
+
+if __name__ == "__main__":
+    all_categories = ["Books"]  # You can expand this list as needed
+
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+    # Create constraints and indexes
+    create_constraints_and_indexes(driver)
+
+    # Load item metadata
+    for category in all_categories:
+        columns = [
+            "title",
+            "average_rating",
+            "rating_number",
+            "description",
+            "price",
+            "store",
+            "categories",
+            "details",
+            "parent_asin",
+            "subtitle",
+            "author",
+        ]
+
+        logger.info(f"Loading metadata for category: {category}")
+        meta_dataset = load_dataset(
+            "McAuley-Lab/Amazon-Reviews-2023",
+            f"raw_meta_{category}",
+            split="full",
+            trust_remote_code=True,
+        )
+        process_dataset(meta_dataset, driver, columns)
+        logger.info(f"Metadata for {category} loaded")
+
+    # Close the Neo4j connection
+    driver.close()
+
+    logger.info("Data insertion complete")

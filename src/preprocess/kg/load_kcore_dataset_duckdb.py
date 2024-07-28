@@ -4,7 +4,7 @@ import duckdb
 DB_FILE = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
 con = duckdb.connect(DB_FILE)
 
-DATASET="/home/kchauhan/repos/mds-tmu-mrp/datasets/5core/rating_only/Video_Games.csv"
+DATASET="/home/kchauhan/repos/mds-tmu-mrp/datasets/5core/rating_only/Books.csv"
 
 con.sql("DROP TABLE IF EXISTS rating_only")
 
