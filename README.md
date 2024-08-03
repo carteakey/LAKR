@@ -20,9 +20,9 @@ python -m main_kgat --data_name amazon-reviews-23 --data_dir /home/kchauhan/repo
 Reset the db 
 sudo reset.sh 
 
-python -m k_core_filtering -k 5 --input_path /home/kchauhan/repos/mds-tmu-mrp/datasets/raw --output_path /home/kchauhan/repos/mds-tmu-mrp/datasets
+python -m k_core_filtering -k 10 --input_path /home/kchauhan/repos/mds-tmu-mrp/datasets/raw --output_path /home/kchauhan/repos/mds-tmu-mrp/datasets
 
-python -m last_out_split  --input_path /home/kchauhan/repos/mds-tmu-mrp/datasets/5core/rating_only --output_path /home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split --seq_path /home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split
+python -m last_out_split  --input_path /home/kchauhan/repos/mds-tmu-mrp/datasets/15core/rating_only --output_path /home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split --seq_path /home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split
 
 We consider the sequential recommendation task. Given the historical interaction sequence of one user {i1, . . . , il}, the task is to predict the next item of interest il+1, where l is the length of the interaction sequence for the user. The items in the interaction sequence have been ordered chronologically. Here, each item i is associated with a sentence that represents the metadata of the corresponding item. Note that in practice, the items in the interaction sequences and the items to predict are usually from the same domain defined in the Amazon Reviews datasets (Kang and McAuley, 2018; Hou et al., 2022).
 
@@ -41,15 +41,41 @@ docker run \
 CUDACXX=/usr/local/cuda-12/bin/nvcc CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_ARCHITECTURES=native" FORCE_CMAKE=1 pip install pandas numpy scikit-learn scipy implicit
 ```
 
+python -m main_kgat --data_name amazon-book --data_dir ~/repos/mds-tmu-mrp/datasets --use_pretrain 0  --test_batch_size=500   --n_epoch 1 --cf_batch_size 8192 --kg_batch_size 8192 
 
-python -m main_kgat --data_name amazon-reviews-23 --data_dir /home/kchauhan/repos/mds-tmu-mrp/datasets --use_pretrain 0  --test_batch_size=2000 --cf_batch_size 8192 --kg_batch_size 8192
+python -m main_bprmf --data_name amazon-book --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 1 --test_batch_size=150 --use_pretrain 0
 
-python -m main_bprmf --data_name amazon-reviews-23 --data_dir /home/kchauhan/repos/mds-tmu-mrp/datasets --n_epoch 10 --test_batch_size=150 --use_pretrain 0
+nohup python -m main_kgat --data_name baseline-kg --data_dir ~/mds-tmu-mrp/datasets --use_pretrain 0  --test_batch_size=500   --n_epoch 100 --cf_batch_size 8192 --kg_batch_size 8192 1> training.log 2> training.err &
 
- python -m main_bprmf --data_name baseline-kg --data_dir /home/kchauhan/repos/mds-tmu-mrp/datasets --n_epoch 1 --train_batch_size=32768  --test_batch_size=100 --use_pretrain 0
+python -m main_bprmf --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 100 --test_batch_size=1000 --use_pretrain 0 --train_batch_size=20000
+
+python -m main_bprmf --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 100 --test_batch_size=1000 --use_pretrain 2 --train_batch_size=100000 --pretrain_model_path /home/kchauhan/repos/mds-tmu-mrp/src/trained_model/BPRMF/baseline-kg/embed-dim64_lr0.0001_pretrain2/model_epoch30.pth  --pretrain_embedding_dir /home/kchauhan/repos/mds-tmu-mrp/datasets/baseline-kg/pretrain 
+
+python -m main_kgat --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_embedding_dir /home/kchauhan/repos/mds-tmu-mrp/datasets/baseline-kg/pretrain 
+
+python -m main_kgat --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=20000 --kg_batch_size 20000 --pretrain_embedding_dir /home/kchauhan/repos/mds-tmu-mrp/datasets/baseline-kg/pretrain
+
+python -m main_bprmf --data_name amazon-book --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 5 --test_batch_size=150 --use_pretrain 0 --train_batch_size=32768  
+
+
+nohup python -m main_bprmf --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 100 --train_batch_size=32768  --test_batch_size=500 --use_pretrain 0 1> training.log 2> training.err &
+
+nohup python -m main_bprmf --data_name baseline-kg --data_dir ~/mds-tmu-mrp/datasets --n_epoch 100 --train_batch_size=32768 --test_batch_size=500 --use_pretrain 0 1> training.log 2> training.err &
+
+2024-07-31 00:21:03,713 - INFO - Total items processed: 29475453
+2024-07-31 00:21:03,713 - INFO - Total items inserted: 9543016
+2024-07-31 00:21:03,714 - INFO - Reviews for Books loaded
+2024-07-31 00:21:03,714 - INFO - Data insertion complete
+2024-07-31 00:21:03,795 - INFO - Table 'rating_only' has 9488297 rows
+2024-07-31 00:21:03,796 - INFO - Table 'rating_only_positive' has 8038735 rows
+2024-07-31 00:21:03,797 - INFO - Table 'raw_meta_Books' has 494691 rows
+2024-07-31 00:21:03,798 - INFO - Table 'raw_review_Books' has 9543016 rows 
 
 python main_kgat.py 
 
+K-cores (i.e., dense subsets): These data have been reduced to extract the k-core, such that each of the remaining users and items have k reviews each.
+
+Ratings only: These datasets include no metadata or reviews, but only (user,item,rating,timestamp) tuples. Thus they are suitable for use with mymedialite (or similar) packages.
 
 HAS_SIMILAR_ELEMENTS
 DEVELOPED_BY
@@ -122,3 +148,7 @@ Try few shot learning
 
 
 
+
+
+
+higher core filtering

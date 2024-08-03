@@ -23,9 +23,12 @@ __pycache__/
 *.lof
 
 .venv
-datasets/**/*.csv
+data/**/*.csv
 db/neo4j/data/
 db/neo4j/plugins
+
+*.npz
+*.duckdb*
 
 *.duckdb
 *.json

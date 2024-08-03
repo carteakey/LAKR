@@ -11,7 +11,6 @@ duckdb:
   review_table: raw_review_Books
   meta_table: raw_meta_Books
   
-
 neo4j:
   uri: 'bolt://localhost:7687'
   user: 'neo4j'
