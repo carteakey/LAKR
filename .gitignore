@@ -2,7 +2,10 @@
 .obsidian
 
 __pycache__
+__pycache__/
+*.pyc
 
+*.dump
 *.aux
 *.bbl
 *.blg
