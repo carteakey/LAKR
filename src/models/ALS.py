@@ -83,10 +83,14 @@ class RecommendationSystem:
 
 def load_and_preprocess_data(file_path):
     print(f"Loading data from {file_path}...")
-    df = pd.read_csv(file_path)
+    df = pd.read_csv(file_path, header=None, names=["user_id","timestamp",  "rating", "parent_asin" ])
     print("Preprocessing data...")
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
     df = df.sort_values(["user_id", "timestamp"])
+    
+    # Drop rows with missing values
+    df = df.dropna()
+    
     return df
 
 
@@ -106,9 +110,9 @@ def filter_seen_items(train_df, test_df):
 
 def main():
     # Load and preprocess data
-    train_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/Video_Games.train.csv"
-    valid_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/Video_Games.valid.csv"
-    test_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/Video_Games.test.csv"
+    train_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.train.csv"
+    valid_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.valid.csv"
+    test_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.test.csv"
 
     train_df = load_and_preprocess_data(train_file)
     valid_df = load_and_preprocess_data(valid_file)
