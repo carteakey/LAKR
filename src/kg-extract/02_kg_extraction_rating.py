@@ -8,10 +8,6 @@ from langchain_core.messages import AIMessage
 
 model = "llama3"  # "gpt-4o-mini" or "llama3"
 
-# Set up environment variables
-os.environ["OPENAI_API_KEY"] = (
-    "sk-proj-D0yZxT7GzCISYBvPvoubT3BlbkFJVbZeySVcTH50HMV1CqSI"
-)
 
 if model == "gpt-4o-mini":
     llm = ChatOpenAI(temperature=0, model_name="gpt-4o-mini")
