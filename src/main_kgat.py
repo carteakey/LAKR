@@ -45,7 +45,7 @@ def evaluate(model, dataloader, Ks, device):
 
             with torch.no_grad():
                 batch_scores = model(
-                    batch_user_ids, item_ids, is_train=False
+                    batch_user_ids, item_ids, mode='predict'
                 )  # (n_batch_users, n_items)
 
             batch_scores = batch_scores.cpu().numpy()
