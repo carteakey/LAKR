@@ -305,7 +305,7 @@ The word cloud in \autoref{fig:word_cloud} visualizes the most common words in r
 \end{figure}
 
 \section{Methodology}
-Our approach consists of several interconnected stages, each contributing to the overall goal of creating an LLM-enhanced knowledge graph-based recommendation system.
+Our approach consists of several interconnected stages, each contributing to the overall goal of creating an LLM-enhanced knowledge graph-based recommendation system. 
 
 \subsection{Data Acquisition and Preprocessing} 
 We will prepare the Amazon Reviews 2023 dataset first.
@@ -322,14 +322,37 @@ We will prepare the Amazon Reviews 2023 dataset first.
         \item Remove HTML tags, special characters, and irrelevant symbols from review texts and product descriptions.
         \item Normalize text data: convert to lowercase, remove extra whitespaces, and handle Unicode characters.
         \item Handle missing values through imputation or removal based on the nature of the missing data.
+        \item Load the dataset into a database.
+  
     \end{itemize}
     
-    \item \textbf{Text Preprocessing:}
-    \begin{itemize}
-        \item Tokenization: Split text into individual words or subwords.
-        \item Stop word removal: Eliminate common words that don't carry significant meaning.
-        \item Lemmatization: Reduce words to their base or dictionary form.
-    \end{itemize}
+    \item \textbf{Recommendation Preprocessing:}
+        \begin{itemize}
+            \item \textbf{K-Core Filtering}: Select a subset of users and items with a minimum number of interactions to reduce sparsity. 
+            \begin{itemize}
+                \item Due to the large size of the dataset, we will focus on a subset of users and items using k-core filtering e.g 15-core.
+                \item Pros of high k-Core: Higher quality reviews, Reduced noise, Balanced distribution and Computational efficiency.
+                \item Cons of high k-Core: Limited diversity, Misalignment with original data distribution, Loss of context, Generalizability and Limited data size for scaling up.
+            \end{itemize}
+        \end{itemize}
+        \begin{itemize}
+        \item \textbf{Leave-Last-Out Splitting:} A data-splitting strategy to pick up the lastest two item interactions for evaluation. This strategy is widely used in many recommendation papers.
+    
+        \begin{itemize}
+            \item Training part: the first N-2 items;
+            \item Validation part: the (N-1)-th item;
+            \item Testing part: the N-th item.
+        \end{itemize}
+        \end{itemize}
+        
+
+
+    % \item \textbf{Text Preprocessing:}
+    % \begin{itemize}
+    %     \item Tokenization: Split text into individual words or subwords.
+    %     \item Stop word removal: Eliminate common words that don't carry significant meaning.
+    %     \item Lemmatization: Reduce words to their base or dictionary form.
+    % \end{itemize}
     
 \end{enumerate}
 
