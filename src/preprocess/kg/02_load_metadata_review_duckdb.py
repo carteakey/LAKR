@@ -5,15 +5,23 @@ from datasets import load_dataset
 import json
 from unidecode import unidecode
 from tqdm import tqdm
-import pyarrow as pa
+import logging
+from datetime import datetime
 
 # DuckDB configuration
 DB_FILE = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
 con = duckdb.connect(DB_FILE)
 
-# Load rating_only_positive data once
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Load rating_only_positive data
+logger.info("Loading rating_only_positive data")
 rating_only_positive = con.execute("SELECT * FROM rating_only_positive").fetchdf()
-rating_only_positive_item_ids = set(rating_only_positive["item_id"].values)
+rating_only_positive_item_ids = set(rating_only_positive["item_id"])
+rating_only_positive_user_ids = set(rating_only_positive["user_id"])
+logger.info(f"Loaded {len(rating_only_positive_item_ids)} unique item IDs and {len(rating_only_positive_user_ids)} unique user IDs")
 
 def load_all_categories():
     category_filepath = hf_hub_download(
@@ -61,23 +69,50 @@ def process_item(item, columns):
                 processed_item[k] = clean_text(str(v))
     return processed_item
 
-def process_dataset(dataset, table_name, columns, batch_size=10000):
+def process_dataset(dataset, table_name, columns, is_review_data=False, batch_size=10000):
     create_table(table_name, columns)
+    
+    start_time = datetime.now()
+    total_items = len(dataset)
+    items_processed = 0
+    items_inserted = 0
     
     processed_data = []
     for item in tqdm(dataset, desc=f"Processing {table_name}"):
-        if item["parent_asin"] in rating_only_positive_item_ids:
-            processed_item = process_item(item, columns)
-            processed_data.append(processed_item)
+        if is_review_data:
+            if item["parent_asin"] in rating_only_positive_item_ids and item["user_id"] in rating_only_positive_user_ids:
+                processed_item = process_item(item, columns)
+                processed_data.append(processed_item)
+                items_inserted += 1
+        else:
+            if item["parent_asin"] in rating_only_positive_item_ids:
+                processed_item = process_item(item, columns)
+                processed_data.append(processed_item)
+                items_inserted += 1
+        
+        items_processed += 1
+        
+        if len(processed_data) >= batch_size:
+            df = pd.DataFrame(processed_data, columns=columns)
+            con.execute(f"INSERT INTO {table_name} SELECT * FROM df")
+            processed_data = []
+        
+        if items_processed % batch_size == 0:
+            elapsed_time = (datetime.now() - start_time).total_seconds()
+            items_per_second = items_processed / elapsed_time if elapsed_time > 0 else 0
+            estimated_time_left = (total_items - items_processed) / items_per_second if items_per_second > 0 else 0
             
-            if len(processed_data) >= batch_size:
-                df = pd.DataFrame(processed_data, columns=columns)
-                con.execute(f"INSERT INTO {table_name} SELECT * FROM df")
-                processed_data = []
+            logger.info(f"Processed {items_processed}/{total_items} items. "
+                        f"Inserted {items_inserted} items. "
+                        f"Speed: {items_per_second:.2f} items/second. "
+                        f"Estimated time left: {estimated_time_left/60:.2f} minutes.")
 
     if processed_data:
         df = pd.DataFrame(processed_data, columns=columns)
         con.execute(f"INSERT INTO {table_name} SELECT * FROM df")
+
+    logger.info(f"Total items processed: {items_processed}")
+    logger.info(f"Total items inserted: {items_inserted}")
 
 if __name__ == "__main__":
     all_categories = ["Books"]  # Load other categories as needed
@@ -94,7 +129,7 @@ if __name__ == "__main__":
     ]
 
     for category in all_categories:
-        print(f"Loading metadata for category: {category}")
+        logger.info(f"Loading metadata for category: {category}")
         meta_dataset = load_dataset(
             "McAuley-Lab/Amazon-Reviews-2023",
             f"raw_meta_{category}",
@@ -102,24 +137,24 @@ if __name__ == "__main__":
             trust_remote_code=True,
         )
         process_dataset(meta_dataset, f"raw_meta_{category}", metadata_columns)
-        print(f"Metadata for {category} loaded")
+        logger.info(f"Metadata for {category} loaded")
 
-        print(f"Loading reviews for category: {category}")
+        logger.info(f"Loading reviews for category: {category}")
         review_dataset = load_dataset(
             "McAuley-Lab/Amazon-Reviews-2023",
             f"raw_review_{category}",
             split="full",
             trust_remote_code=True,
         )
-        process_dataset(review_dataset, f"raw_review_{category}", review_columns)
-        print(f"Reviews for {category} loaded")
+        process_dataset(review_dataset, f"raw_review_{category}", review_columns, is_review_data=True)
+        logger.info(f"Reviews for {category} loaded")
 
-    print("Data insertion complete")
+    logger.info("Data insertion complete")
 
     tables = con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
     for table in tables:
         table_name = table[0]
         count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-        print(f"Table '{table_name}' has {count} rows")
+        logger.info(f"Table '{table_name}' has {count} rows")
 
     con.close()

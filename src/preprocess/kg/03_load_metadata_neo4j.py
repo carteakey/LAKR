@@ -1,18 +1,28 @@
-import polars as pl
-from neo4j import GraphDatabase
-from huggingface_hub import hf_hub_download
-from datasets import load_dataset
-import json
-from unidecode import unidecode
-from tqdm import tqdm
 import gc
+import json
 import logging
 from datetime import datetime
+
+import duckdb
+import polars as pl
+from datasets import load_dataset
+from huggingface_hub import hf_hub_download
+from neo4j import GraphDatabase
+from tqdm import tqdm
+from unidecode import unidecode
 
 # Neo4j configuration
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "tmu-2024"
+
+# DuckDB configuration
+DB_FILE = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
+con = duckdb.connect(DB_FILE)
+
+# Load rating_only_positive data once
+rating_only_positive = con.execute("SELECT * FROM rating_only_positive").fetchdf()
+rating_only_positive_item_ids = set(rating_only_positive["item_id"].values)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -45,7 +55,6 @@ def clean_nested_dict(d):
 
 def parse_json_field(field_value):
     if isinstance(field_value, str):
-        # Replace single quotes with double quotes for JSON parsing
         field_value = field_value.replace("'", '"')
         try:
             parsed_json = json.loads(field_value)
@@ -93,32 +102,33 @@ def create_graph_batch(tx, records):
     """
     tx.run(query, records=records)
 
-def process_batch(batch, columns):
+def process_batch(batch, columns, rating_only_positive_item_ids):
     records = []
     for item in batch:
-        processed_item = process_item(item, columns)
-        book = {
-            'title': processed_item.get('title'),
-            'parent_asin': processed_item.get('parent_asin')
-        }
-        
-        author = processed_item['author']['name'] if isinstance(processed_item.get('author'), dict) and 'name' in processed_item['author'] else None
-        
-        publisher = None
-        if isinstance(processed_item.get('details'), dict) and 'Publisher' in processed_item['details']:
-            publisher = processed_item['details']['Publisher'].split(';')[0].strip()
-        
-        categories = processed_item.get('categories', [])
-        
-        records.append({
-            'book': book,
-            'author': author,
-            'publisher': publisher,
-            'categories': categories
-        })
+        if item['parent_asin'] in rating_only_positive_item_ids:
+            processed_item = process_item(item, columns)
+            book = {
+                'title': processed_item.get('title'),
+                'parent_asin': processed_item.get('parent_asin')
+            }
+            
+            author = processed_item['author']['name'] if isinstance(processed_item.get('author'), dict) and 'name' in processed_item['author'] else None
+            
+            publisher = None
+            if isinstance(processed_item.get('details'), dict) and 'Publisher' in processed_item['details']:
+                publisher = processed_item['details']['Publisher'].split(';')[0].strip()
+            
+            categories = processed_item.get('categories', [])
+            
+            records.append({
+                'book': book,
+                'author': author,
+                'publisher': publisher,
+                'categories': categories
+            })
     return records
 
-def process_dataset(dataset, driver, columns, batch_size=1000):
+def process_dataset(dataset, driver, columns, rating_only_positive_item_ids, batch_size=1000):
     total_items = len(dataset)
     total_batches = (total_items + batch_size - 1) // batch_size
     
@@ -128,7 +138,7 @@ def process_dataset(dataset, driver, columns, batch_size=1000):
     with driver.session() as session:
         for i in tqdm(range(0, total_items, batch_size), total=total_batches, desc="Processing batches"):
             batch = [dataset[j] for j in range(i, min(i + batch_size, total_items))]
-            records = process_batch(batch, columns)
+            records = process_batch(batch, columns, rating_only_positive_item_ids)
             session.execute_write(create_graph_batch, records)
             
             items_processed += len(batch)
@@ -140,7 +150,6 @@ def process_dataset(dataset, driver, columns, batch_size=1000):
                         f"Speed: {items_per_second:.2f} items/second. "
                         f"Estimated time left: {estimated_time_left/60:.2f} minutes.")
             
-            # Force garbage collection to free up memory
             gc.collect()
 
 if __name__ == "__main__":
@@ -174,7 +183,7 @@ if __name__ == "__main__":
             split="full",
             trust_remote_code=True,
         )
-        process_dataset(meta_dataset, driver, columns)
+        process_dataset(meta_dataset, driver, columns, rating_only_positive_item_ids)
         logger.info(f"Metadata for {category} loaded")
 
     # Close the Neo4j connection
