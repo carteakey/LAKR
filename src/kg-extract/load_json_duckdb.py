@@ -1,101 +1,61 @@
 import os
-import duckdb
 import json
-import time
-from neo4j import GraphDatabase
-from langchain_community.graphs import Neo4jGraph
-from llm_custom import create_unstructured_prompt
-from langchain_experimental.graph_transformers import LLMGraphTransformer
-from langchain_openai import ChatOpenAI
-from langchain_community.chat_models import ChatOllama
-from langchain_core.documents import Document
-from langchain_community.callbacks import get_openai_callback
-import signal
-from dotenv import load_dotenv
+import duckdb
+from tqdm import tqdm
 
-# ... (previous code remains the same)
+def load_json_to_duckdb(json_directory, database_path, table_name):
+    # Connect to DuckDB
+    con = duckdb.connect(database_path)
 
-# Function to process a single review
-def process_review(row):
-    user_id = row[5]
-    item_id = row[1]
-
-    if is_review_processed(user_id, item_id):
-        return "already_processed"
-
-    text = f"Book: {row[0]}\nReview Title: {row[2]}\nReview Text: {row[3]}"
-    documents = [Document(page_content=text)]
-
-    try:
-        if model == 'gpt-4o-mini':
-            graph_documents = llm_transformer.convert_to_graph_documents(documents)
-        else:
-            graph_documents = llm_transformer.convert_to_graph_documents(documents)
-    except Exception as e:
-        error_message = f"Error: type validation failed for row: {row}\n, error: {e}\n"
-        with open(f"output/{model}/errors.txt", "a") as f:
-            f.write(error_message)
-        store_skipped_review(
-            user_id,
-            item_id,
-            "Type validation error",
-            {
-                "user_id": user_id,  # Added user_id here
-                "title": row[0],
-                "parent_asin": row[1],
-                "review_title": row[2],
-                "review_text": row[3],
-                "helpful_vote": row[4],
-                "error": str(e),
-            },
+    # Create the table if it doesn't exist
+    con.execute(f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            user_id VARCHAR,
+            title VARCHAR,
+            parent_asin VARCHAR,
+            review_title VARCHAR,
+            review_text VARCHAR,
+            helpful_vote INTEGER,
+            nodes JSON,
+            relationships JSON
         )
-        return "skipped"
+    """)
 
-    nodes = [{"id": node.id, "type": node.type} for node in graph_documents[0].nodes]
-    relationships = [
-        {
-            "source": {"id": rel.source.id, "type": rel.source.type},
-            "target": {"id": rel.target.id, "type": rel.target.type},
-            "type": rel.type,
-        }
-        for rel in graph_documents[0].relationships
-    ]
+    # Get list of JSON files
+    json_files = [f for f in os.listdir(json_directory) if f.endswith('.json')]
 
-    if not nodes or not relationships:
-        error_message = f"Error: No nodes or relationships found for row: {row}\n"
-        with open(f"output/{model}/errors.txt", "a") as f:
-            f.write(error_message)
-        store_skipped_review(
-            user_id,
-            item_id,
-            "No nodes or relationships",
-            {
-                "user_id": user_id,  # Added user_id here
-                "title": row[0],
-                "parent_asin": row[1],
-                "review_title": row[2],
-                "review_text": row[3],
-                "helpful_vote": row[4],
-            },
-        )
-        return "skipped"
+    # Process each JSON file
+    for filename in tqdm(json_files, desc="Processing JSON files"):
+        file_path = os.path.join(json_directory, filename)
+        
+        with open(file_path, 'r') as file:
+            data = json.load(file)
 
-    json_data = {
-        "user_id": user_id,  # Added user_id here
-        "title": row[0],
-        "parent_asin": row[1],
-        "review_title": row[2],
-        "review_text": row[3],
-        "helpful_vote": row[4],
-        "nodes": nodes,
-        "relationships": relationships,
-    }
+        # Insert data into the table
+        con.execute(f"""
+            INSERT INTO {table_name} (user_id, title, parent_asin, review_title, review_text, helpful_vote, nodes, relationships)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            data['user_id'],
+            data['title'],
+            data['parent_asin'],
+            data['review_title'],
+            data['review_text'],
+            data['helpful_vote'],
+            json.dumps(data['nodes']),
+            json.dumps(data['relationships'])
+        ))
 
-    os.makedirs(f"output/{model}", exist_ok=True)
-    with open(f"output/{model}/{time.time()}_{row[1]}.json", "w") as f:
-        json.dump(json_data, f, indent=2)
+    # Commit changes and close connection
+    con.commit()
+    con.close()
 
-    update_review_status(user_id, item_id, json_data)
-    return "processed"
+    print(f"All JSON files have been loaded into the {table_name} table in {database_path}")
 
-# ... (rest of the code remains the same)
+# Usage example
+if __name__ == "__main__":
+    json_directory = "/path/to/your/json/files"
+    database_path = "/path/to/your/duckdb/database.duckdb"
+    table_name = "processed_reviews"
+
+    load_json_to_duckdb(json_directory, database_path, table_name)
