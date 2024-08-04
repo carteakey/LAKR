@@ -9,6 +9,15 @@ AUTH = ("neo4j", "tmu-2024")
 # DuckDB connection
 DUCKDB_PATH = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
 
+def reset_processing_status():
+    con = duckdb.connect(DUCKDB_PATH)
+    con.execute("UPDATE review_processing_status SET status = 'processed' WHERE status = 'KG_updated'")
+    con.close()
+    print("Review processing status has been reset for KG-updated records.")
+
+# Uncomment the following line to reset the table
+# reset_processing_status()
+
 class Neo4jUpdater:
     def __init__(self, uri, auth):
         self.driver = GraphDatabase.driver(uri, auth=auth)
@@ -83,6 +92,7 @@ def process_duckdb_records():
             SELECT user_id, item_id, json_data
             FROM review_processing_status
             WHERE status = 'processed'
+            and rating >=4
         """).fetchall()
 
         for user_id, item_id, json_data in records:
@@ -111,14 +121,3 @@ def process_duckdb_records():
 if __name__ == "__main__":
     process_duckdb_records()
 
-# Commented out portion to reset the review_processing_status table
-"""
-def reset_processing_status():
-    con = duckdb.connect(DUCKDB_PATH)
-    con.execute("UPDATE review_processing_status SET status = 'processed' WHERE status = 'KG_updated'")
-    con.close()
-    print("Review processing status has been reset for KG-updated records.")
-
-# Uncomment the following line to reset the table
-# reset_processing_status()
-"""
