@@ -8,11 +8,10 @@ from langchain_core.messages import AIMessage
 
 model = "llama3"  # "gpt-4o-mini" or "llama3"
 
-
 if model == "gpt-4o-mini":
     llm = ChatOpenAI(temperature=0, model_name="gpt-4o-mini")
 elif model == "llama3":
-    llm = ChatOllama(model="llama3.1:8b-instruct-q8_0", temperature=0, format="json")
+    llm = ChatOllama(model="llama3.1:8b-instruct-q4_0", temperature=0, format="json")
 
 # Connect to DuckDB
 con = duckdb.connect("/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb")
@@ -57,6 +56,8 @@ def rate_extraction(llm, input_data):
     try:
         print(response)
         rating = json.loads(response.content).get("rating")
+        if rating is None:
+            raise ValueError
         return max(1, min(5, rating))  # Ensure rating is between 1 and 5
     except ValueError:
         print(f"Error parsing rating: {response.content}")
