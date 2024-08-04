@@ -9,7 +9,12 @@ from langchain_experimental.graph_transformers import LLMGraphTransformer
 from langchain_openai import ChatOpenAI
 from langchain_community.chat_models import ChatOllama
 from langchain_core.documents import Document
+from langchain_community.callbacks import get_openai_callback
 import signal
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
 
 # Constants
 BATCH_SIZE = 10  # Number of reviews to process in each batch
@@ -28,12 +33,7 @@ allowed_nodes = [
     "Book"
     #  , "Concept", "Feature"]
 ]
-model = "llama3"  # "gpt-4o-mini" or "llama3"
-
-# Environment variables
-os.environ["NEO4J_URI"] = "bolt://localhost:7687"
-os.environ["NEO4J_USERNAME"] = "neo4j"
-os.environ["NEO4J_PASSWORD"] = "tmu-2024"
+model = "gpt-4o-mini"  # "gpt-4o-mini" or "llama3" or "phi3-mini"
 
 # Initialize Neo4j graph
 graph = Neo4jGraph()
@@ -42,8 +42,10 @@ graph = Neo4jGraph()
 if model == "gpt-4o-mini":
     llm = ChatOpenAI(temperature=0, model_name="gpt-4o-mini")
 elif model == "llama3":
-    llm = ChatOllama(model="llama3.1:8b-instruct-q8_0", temperature=0)
-
+    llm = ChatOllama(model="llama3.1:8b-instruct-q4_0", temperature=0)
+elif model == 'phi3-mini':
+    llm = ChatOllama(model='phi3:3.8b-mini-4k-instruct-q6_K', temperature=0)
+    
 # Create chat template and LLM transformer
 chat_template = create_unstructured_prompt(allowed_nodes, allowed_relationships)
 llm_transformer = LLMGraphTransformer(
@@ -120,6 +122,22 @@ def get_total_unprocessed_reviews():
     return result[0] if result else 0
 
 # Function to process a single review
+import os
+import duckdb
+import json
+import time
+from neo4j import GraphDatabase
+from langchain_community.graphs import Neo4jGraph
+from llm_custom import create_unstructured_prompt
+from langchain_experimental.graph_transformers import LLMGraphTransformer
+from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
+from langchain_core.documents import Document
+from langchain_community.callbacks import get_openai_callback
+import signal
+from dotenv import load_dotenv
+
+# Function to process a single review
 def process_review(row):
     user_id = row[5]
     item_id = row[1]
@@ -131,7 +149,10 @@ def process_review(row):
     documents = [Document(page_content=text)]
 
     try:
-        graph_documents = llm_transformer.convert_to_graph_documents(documents)
+        if model == 'gpt-4o-mini':
+            graph_documents = llm_transformer.convert_to_graph_documents(documents)
+        else:
+            graph_documents = llm_transformer.convert_to_graph_documents(documents)
     except Exception as e:
         error_message = f"Error: type validation failed for row: {row}\n, error: {e}\n"
         with open(f"output/{model}/errors.txt", "a") as f:
@@ -141,6 +162,7 @@ def process_review(row):
             item_id,
             "Type validation error",
             {
+                "user_id": user_id,  # Added user_id here
                 "title": row[0],
                 "parent_asin": row[1],
                 "review_title": row[2],
@@ -170,6 +192,7 @@ def process_review(row):
             item_id,
             "No nodes or relationships",
             {
+                "user_id": user_id,  # Added user_id here
                 "title": row[0],
                 "parent_asin": row[1],
                 "review_title": row[2],
@@ -180,6 +203,7 @@ def process_review(row):
         return "skipped"
 
     json_data = {
+        "user_id": user_id,  # Added user_id here
         "title": row[0],
         "parent_asin": row[1],
         "review_title": row[2],
@@ -195,6 +219,7 @@ def process_review(row):
 
     update_review_status(user_id, item_id, json_data)
     return "processed"
+
 
 # Timeout handler function
 def timeout_handler(signum, frame):
