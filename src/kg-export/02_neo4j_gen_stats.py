@@ -217,7 +217,7 @@ def main():
     print(tabulate(table, headers=["Metric", "Value"], tablefmt="grid"))
 
     latex_table = stats.get_stats_latex()
-    # print(latex_table)
+    print(latex_table)
 
     stats.close()
 
