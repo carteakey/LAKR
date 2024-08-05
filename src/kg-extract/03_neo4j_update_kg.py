@@ -16,7 +16,7 @@ def reset_processing_status():
     print("Review processing status has been reset for KG-updated records.")
 
 # Uncomment the following line to reset the table
-# reset_processing_status()
+reset_processing_status()
 
 class Neo4jUpdater:
     def __init__(self, uri, auth):
@@ -65,11 +65,11 @@ class Neo4jUpdater:
             target_type = target['type']
 
             if rel_type == 'SIMILAR_TO_BOOK':
-                # For similar books, match by title
+                # For similar books, match by title case-insensitively
                 tx.run("""
                     MATCH (s:Book {parent_asin: $main_asin})
                     MATCH (t:Book)
-                    WHERE t.title = $target_title
+                    WHERE toLower(t.title) = toLower($target_title)
                     MERGE (s)-[r:SIMILAR_TO_BOOK]->(t)
                 """, main_asin=main_book_asin, target_title=target_id)
             else:
@@ -120,4 +120,3 @@ def process_duckdb_records():
 
 if __name__ == "__main__":
     process_duckdb_records()
-

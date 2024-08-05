@@ -97,7 +97,7 @@ def process_kg_and_user_data(neo4j_uri, neo4j_username, neo4j_password, output_d
         with open(file_path, 'r') as csvfile:
             csvreader = csv.reader(csvfile)
             for row in tqdm(csvreader, desc=f"Processing {file_path}"):
-                user_id, parent_asin, rating, timestamp, _ = row
+                user_id, parent_asin, rating, timestamp = row
                 
                 # Only process users and items that are in rating_only_positive dataset
                 if (user_id in rating_only_positive_user_ids and 
@@ -135,9 +135,9 @@ neo4j_uri = conf["neo4j"]["uri"]
 neo4j_username = conf["neo4j"]["user"]
 neo4j_password = conf["neo4j"]["password"]
 
-output_dir = "/home/kchauhan/repos/mds-tmu-mrp/datasets/baseline-kg"
-train_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.train.csv"
-valid_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.valid.csv"
-test_csv = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.test.csv"
+output_dir = "/home/kchauhan/repos/mds-tmu-mrp/data/kg/baseline-kg"
+train_csv = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.train.csv"
+valid_csv = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.valid.csv"
+test_csv = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.test.csv"
 
 process_kg_and_user_data(neo4j_uri, neo4j_username, neo4j_password, output_dir, train_csv, valid_csv, test_csv)
