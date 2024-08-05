@@ -1,19 +1,31 @@
 import duckdb
 from neo4j import GraphDatabase
 import json
+from fuzzywuzzy import fuzz
+from dotenv import load_dotenv
+import os
 
-# Neo4j connection details
-URI = "bolt://localhost:7687"
-AUTH = ("neo4j", "tmu-2024")
+# Load environment variables
+load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
+
+# Initialize Neo4j driver
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_USER = os.getenv("NEO4J_USER")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+DUCKDB_PATH = os.getenv("DUCKDB_PATH")
 
 # DuckDB connection
-DUCKDB_PATH = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
-
 def reset_processing_status():
     con = duckdb.connect(DUCKDB_PATH)
     con.execute("UPDATE review_processing_status SET status = 'processed' WHERE status = 'KG_updated'")
     con.close()
     print("Review processing status has been reset for KG-updated records.")
+ 
+    neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    # Delete the SIMILAR_TO_BOOK relationships
+    with neo4j_driver.session() as session:
+        session.run("MATCH (s:Book)-[r:SIMILAR_TO_BOOK]->(t:Book) DELETE r")
+        print("SIMILAR_TO_BOOK relationships have been deleted.")
 
 # Uncomment the following line to reset the table
 reset_processing_status()
@@ -65,13 +77,38 @@ class Neo4jUpdater:
             target_type = target['type']
 
             if rel_type == 'SIMILAR_TO_BOOK':
-                # For similar books, match by title case-insensitively
-                tx.run("""
-                    MATCH (s:Book {parent_asin: $main_asin})
-                    MATCH (t:Book)
-                    WHERE toLower(t.title) = toLower($target_title)
-                    MERGE (s)-[r:SIMILAR_TO_BOOK]->(t)
-                """, main_asin=main_book_asin, target_title=target_id)
+                # Step 1: Try exact match first
+                exact_match = tx.run("""
+                    MATCH (b:Book)
+                    WHERE toLower(b.title) = toLower($title)
+                    RETURN b.parent_asin AS asin
+                """, title=target_id).single()
+
+                if exact_match:
+                    tx.run("""
+                        MATCH (s:Book {parent_asin: $main_asin})
+                        MATCH (t:Book {parent_asin: $target_asin})
+                        MERGE (s)-[r:SIMILAR_TO_BOOK]->(t)
+                    """, main_asin=main_book_asin, target_asin=exact_match['asin'])
+                    print(f"Exact match found for book title: {target_id}")
+                else:
+                    # Step 2: If no exact match, use fuzzy matching
+                    result = tx.run("""
+                        MATCH (b:Book)
+                        RETURN b.title AS title, b.parent_asin AS asin
+                    """)
+                    books = [(record["title"], record["asin"]) for record in result]
+                    
+                    best_match = max(books, key=lambda x: fuzz.ratio(x[0].lower(), target_id.lower()))
+                    if fuzz.ratio(best_match[0].lower(), target_id.lower()) > 90:  # Set a threshold
+                        tx.run("""
+                            MATCH (s:Book {parent_asin: $main_asin})
+                            MATCH (t:Book {parent_asin: $target_asin})
+                            MERGE (s)-[r:SIMILAR_TO_BOOK]->(t)
+                        """, main_asin=main_book_asin, target_asin=best_match[1])
+                        print(f"Fuzzy match found for book title: {target_id} -> {best_match[0]}")
+                    else:
+                        print(f"No close match found for book title: {target_id}")
             else:
                 # For features and concepts, use the main book's ASIN
                 tx.run(f"""
@@ -83,7 +120,7 @@ class Neo4jUpdater:
         return True
 
 def process_duckdb_records():
-    updater = Neo4jUpdater(URI, AUTH)
+    updater = Neo4jUpdater(NEO4J_URI, (NEO4J_USER, NEO4J_PASSWORD))
     con = duckdb.connect(DUCKDB_PATH)
     
     try:
@@ -92,7 +129,7 @@ def process_duckdb_records():
             SELECT user_id, item_id, json_data
             FROM review_processing_status
             WHERE status = 'processed'
-            and rating >=4
+            AND rating >= 4
         """).fetchall()
 
         for user_id, item_id, json_data in records:
