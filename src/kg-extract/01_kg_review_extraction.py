@@ -27,7 +27,7 @@ args = parser.parse_args()
 # Constants
 BATCH_SIZE = 10
 TIMEOUT_SECONDS = 10
-allowed_relationships = [args.relationship]  # Only process the specified relationship
+allowed_relationships = [args.relationship]  # Only process the specified relationship # 'SIMILAR_TO_BOOK'
 allowed_nodes = ["Book"]
 model = args.model
 
@@ -48,6 +48,18 @@ llm_transformer = LLMGraphTransformer(
 
 # Connect to DuckDB
 con = duckdb.connect("/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb")
+
+# Initialize Neo4j driver
+neo4j_uri = os.getenv("NEO4J_URI")
+neo4j_user = os.getenv("NEO4J_USER")
+neo4j_password = os.getenv("NEO4J_PASSWORD")
+neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
+
+# Function to check if ASIN exists in Neo4j
+def asin_exists_in_neo4j(asin):
+    with neo4j_driver.session() as session:
+        result = session.run("MATCH (b:Book {parent_asin: $asin}) RETURN COUNT(b) > 0 AS exists", asin=asin)
+        return result.single()["exists"]
 
 # Create tables if they don't exist (modified to include relationship type)
 con.execute("""
@@ -135,6 +147,23 @@ def process_review(row):
     if is_review_processed(user_id, item_id):
         return "already_processed"
 
+    # Check if ASIN exists in Neo4j
+    if not asin_exists_in_neo4j(item_id):
+        store_skipped_review(
+            user_id,
+            item_id,
+            "ASIN not found in Neo4j",
+            {
+                "user_id": user_id,
+                "title": row[0],
+                "parent_asin": row[1],
+                "review_title": row[2],
+                "review_text": row[3],
+                "helpful_vote": row[4],
+            },
+        )
+        return "skipped"
+    
     text = f"Book: {row[0]}\nReview Title: {row[2]}\nReview Text: {row[3]}"
     documents = [Document(page_content=text)]
 
