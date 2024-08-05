@@ -155,6 +155,31 @@ python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --
 
 
 
+# Extract relationships using LLM
+
+## Extract relationships
+```bash
+export BASE_DIR=~/repos/mds-tmu-mrp
+cd ${BASE_DIR}/src/kg-extract 
+python -m 01_kg_review_extraction --relationship SIMILAR_TO_BOOK --model gpt-4o-mini
+```
+
+## Evaluate the extracted relationships
+```bash
+export BASE_DIR=~/repos/mds-tmu-mrp
+cd ${BASE_DIR}/src/kg-extract
+python -m 02_kg_extraction_rating.py --relationship SIMILAR_TO_BOOK --model llama3
+```
+
+## Update the KG with the extracted relationships
+```bash
+export BASE_DIR=~/repos/mds-tmu-mrp
+cd ${BASE_DIR}/src/kg-extract
+python -m 03_neo4j_update_kg.py --relationship SIMILAR_TO_BOOK
+```
+
+
+
 
 
 
