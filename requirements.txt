@@ -13,3 +13,5 @@ jupyter
 json-repair
 tabulate
 torch
+fuzzywuzzy 
+python-Levenshtein
