@@ -132,7 +132,7 @@ fi
 if [ "$1" == "extract_relationships" ]; then
   echo "Extracting relationships using LLM..."
   cd $SRC/kg-extract 
-  python -m 01_kg_review_extraction --relationship SIMILAR_TO_BOOK --model gpt-4o-mini | tee -a $LOGS/extract_relationships_$DATE.log
+  python -m 01_kg_review_extraction --relationship RELATED_AUTHOR --model gpt-4o-mini | tee -a $LOGS/extract_relationships_$DATE.log
   echo "Relationships extracted." | tee -a $LOGS/extract_relationships_$DATE.log
 fi
 
