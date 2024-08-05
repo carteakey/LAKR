@@ -1,12 +1,22 @@
 import os
 import duckdb
 import json
+import argparse
 from langchain_openai import ChatOpenAI
 from langchain_community.chat_models import ChatOllama
 from langchain_core.messages import AIMessage
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
 
-model = "llama3"  # "gpt-4o-mini" or "llama3"
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Rate extractions for a specific relationship type.")
+parser.add_argument("--relationship", type=str, help="Relationship type to rate (e.g., SIMILAR_TO_BOOK, RELATED_AUTHOR)")
+parser.add_argument("--model", type=str, default="llama3", help="Language model to use (gpt-4o-mini, llama3, phi3-mini)")
+args = parser.parse_args()
+
+model =  args.model
 
 if model == "gpt-4o-mini":
     llm = ChatOpenAI(temperature=0, model_name="gpt-4o-mini")
@@ -16,6 +26,10 @@ elif model == "llama3":
 # Connect to DuckDB
 con = duckdb.connect("/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb")
 
+def reset_ratings():
+    con.execute(f"UPDATE review_processing_status SET rating = NULL WHERE relationship_type = '{args.relationship}'")
+
+reset_ratings()
 
 def get_kg_extraction_rating_prompt(input):
     rate_kg_extraction = f"""
@@ -26,6 +40,7 @@ def get_kg_extraction_rating_prompt(input):
         Rate the extraction quality on a scale of 1 to 5.
         1 being the worst and 5 being the best.
         Just provide the rating.
+        If the source and target books are the same, rate the extraction as 1.
         Do not provide any feedback.
         Based on your knowledge, rate the accuracy of the extracted knowledge graph.
         The Allowed nodes and relationships are:
@@ -37,7 +52,6 @@ def get_kg_extraction_rating_prompt(input):
     return {
         "rate_kg_extraction": rate_kg_extraction,
     }
-
 
 def rate_extraction(llm, input_data):
     prompt = get_kg_extraction_rating_prompt(input_data)
@@ -55,7 +69,10 @@ def rate_extraction(llm, input_data):
     response = llm.invoke(messages)
     try:
         print(response)
-        rating = json.loads(response.content).get("rating")
+        if model == "gpt-4o-mini":
+            rating = int(response.content)
+        else:
+            rating = json.loads(response.content).get("rating")
         if rating is None:
             raise ValueError
         return max(1, min(5, rating))  # Ensure rating is between 1 and 5
@@ -63,27 +80,26 @@ def rate_extraction(llm, input_data):
         print(f"Error parsing rating: {response.content}")
         return None
 
-
-# Get all processed reviews without ratings
+# Get all processed reviews without ratings for the specified relationship
 unrated_reviews = con.execute(
-    """
+    f"""
     SELECT user_id, item_id, json_data
     FROM review_processing_status
-    WHERE rating IS NULL
+    WHERE rating IS NULL AND relationship_type = '{args.relationship}'
 """
 ).fetchall()
 
 total_reviews = len(unrated_reviews)
 processed_reviews = 0
 
-print(f"Total unrated reviews: {total_reviews}")
+print(f"Total unrated reviews for {args.relationship}: {total_reviews}")
 
 for user_id, item_id, json_data in unrated_reviews:
     data = json.loads(json_data)
 
     rating_input = {
         "nodes": ["Book"],
-        "relationships": ["SIMILAR_TO_BOOK"],
+        "relationships": [args.relationship],
         "kg_json": json_data,
     }
 
@@ -95,15 +111,10 @@ for user_id, item_id, json_data in unrated_reviews:
             """
             UPDATE review_processing_status
             SET rating = ?
-            WHERE user_id = ? AND item_id = ?
+            WHERE user_id = ? AND item_id = ? AND relationship_type = ?
         """,
-            [rating, user_id, item_id],
+            [rating, user_id, item_id, args.relationship],
         )
-
-        # Update the JSON file with the rating
-        data["rating"] = rating
-        with open(f"output/{model}/{item_id}.json", "w") as f:
-            json.dump(data, f, indent=2)
 
     processed_reviews += 1
     progress = (processed_reviews / total_reviews) * 100
@@ -113,21 +124,19 @@ for user_id, item_id, json_data in unrated_reviews:
         flush=True,
     )
 
-print("\nRating process complete!")
-
+print(f"\nRating process complete for {args.relationship}!")
 
 def get_good_extractions(min_rating=4):
     return con.execute(
         f"""
         SELECT json_data
         FROM review_processing_status
-        WHERE rating >= {min_rating}
+        WHERE rating >= {min_rating} AND relationship_type = '{args.relationship}'
     """
     ).fetchall()
 
-
 # Example usage:
 good_extractions = get_good_extractions()
-print(f"Number of good extractions: {len(good_extractions)}")
+print(f"Number of good extractions for {args.relationship}: {len(good_extractions)}")
 
 con.close()
