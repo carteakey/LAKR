@@ -172,7 +172,7 @@ def calc_metrics_at_k(top_k_items, train_user_dict, test_user_dict, user_ids, Ks
             num_hits_k = np.sum(hit_k)
             
             precision_k = num_hits_k / k
-            recall_k = num_hits_k / len(test_pos_item_list) if test_pos_item_list else 0
+            recall_k = num_hits_k / len(test_pos_item_list) if len(test_pos_item_list) > 0 else 0
             ndcg_k = ndcg_at_k(hit_k, k)
             
             result[k]['precision'].append(precision_k)
@@ -180,6 +180,7 @@ def calc_metrics_at_k(top_k_items, train_user_dict, test_user_dict, user_ids, Ks
             result[k]['ndcg'].append(ndcg_k)
     
     return result
+
 
 def ndcg_at_k(hit, k):
     dcg = np.sum(hit / np.log2(np.arange(2, len(hit) + 2)))
