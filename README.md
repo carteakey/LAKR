@@ -82,28 +82,33 @@ python -m src/preprocess/kg/01_load_kcore_ratings_duckdb.py
 python -m src/preprocess/kg/02_load_metadata_reviews_duckdb.py
 ```
 
-## Knowledge Graph Construction
-
-### Load Metadata as Baseline KG
+#### Load Metadata as Baseline KG
 
 ```bash
 python -m src/preprocess/kg/03_load_metadata_neo4j.py
 ```
 
-## Resetting the Databases
+## Knowledge Graph Augmentation using LLM
 
-### Reset DuckDB
-
-```bash
-rm -rf db/duckdb/amazon-reviews.db
-```
-
-### Reset Neo4j
+### Extract Relationships (e.g., SIMILAR_TO_BOOK, RELATED_AUTHOR)
 
 ```bash
-cd db/neo4j
-sudo reset.sh
+cd ${BASE_DIR}/src/kg-extract 
+python -m 01_kg_review_extraction --relationship SIMILAR_TO_BOOK --model gpt-4o-mini
 ```
+
+### Evaluate Extracted Relationships
+
+```bash
+python -m 02_kg_extraction_rating.py --relationship SIMILAR_TO_BOOK --model llama3
+```
+
+### Update KG with Extracted Relationships
+
+```bash
+python -m 03_neo4j_update_kg.py --relationship SIMILAR_TO_BOOK
+```
+
 
 ## Model Training
 
@@ -137,23 +142,17 @@ To use pre-trained embeddings:
 python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=20000 --kg_batch_size 20000 --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR
 ```
 
-## Extracting Relationships Using LLM
+## Resetting the Databases
 
-### Extract Relationships (e.g., SIMILAR_TO_BOOK, RELATED_AUTHOR)
+### Reset DuckDB
 
 ```bash
-cd ${BASE_DIR}/src/kg-extract 
-python -m 01_kg_review_extraction --relationship SIMILAR_TO_BOOK --model gpt-4o-mini
+rm -rf db/duckdb/amazon-reviews.db
 ```
 
-### Evaluate Extracted Relationships
+### Reset Neo4j
 
 ```bash
-python -m 02_kg_extraction_rating.py --relationship SIMILAR_TO_BOOK --model llama3
-```
-
-### Update KG with Extracted Relationships
-
-```bash
-python -m 03_neo4j_update_kg.py --relationship SIMILAR_TO_BOOK
+cd db/neo4j
+sudo reset.sh
 ```
