@@ -30,7 +30,8 @@ set -e
 # docker exec -it  neo4j-apoc cypher-shell -u neo4j -p neo4j 'CALL dbms.security.changePassword("tmu-2024")'
 
 cd $src/preprocess/kg/
-python -m load_metadata_neo4j 1>$logs/load_metadata_neo4j.$date.log
+python -m 03_load_metadata_neo4j 1>$logs/load_metadata_neo4j.$date.log
 
 #export data from neo4j
-python -m neo4j_export_kg  1>$logs/neo4j_export_kg.$date.log
+cd $src/kg-export/
+python -m 03_neo4j_export_kg  1>$logs/neo4j_export_kg.$date.log

@@ -1,4 +1,4 @@
-## Tasks
+# LLM Enhanced KG Based Recommendation
 
 ## Getting Started
 
@@ -40,7 +40,38 @@ python -m src/preprocessing/rec/k_core_filtering -k 10 --input_path ~/llm-enhanc
 For each user, the latest review will be used for testing, the second latest review will be used for validation, and all the remaining reviews are used for training.
 
 ```bash
-python -m src/preprocessing/rec/last_out_split  --input_path ~/llm-enhanced-kg-rec/data/15core/rating_only --output_path ~/llm-enhanced-kg-rec/data/last_out_split --seq_path ~/llm-enhanced-kg-rec/data/last_out_split
+export BASE_DIR=~/repos/mds-tmu-mrp
+export INPUT_PATH=${BASE_DIR}/data/processed/k_core_filtered/15core/rating_only
+export OUTPUT_PATH=${BASE_DIR}/data/processed/last_out_split
+export SEQ_PATH=${OUTPUT_PATH}/seq
+cd BASE_DIR
+cd src/preprocess/rec
+python -m 02_last_out_split  --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH
+```
+
+
+### Timestamp Split
+
+```bash
+export BASE_DIR=~/repos/mds-tmu-mrp
+export INPUT_PATH=${BASE_DIR}/data/processed/k_core_filtered/15core/rating_only
+export OUTPUT_PATH=${BASE_DIR}/data/processed/timestamp_split
+export SEQ_PATH=${OUTPUT_PATH}/seq
+cd BASE_DIR
+cd src/preprocess/rec
+python -m 02_timestamp_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH
+```
+
+### Random Split
+
+```bash
+export BASE_DIR=~/repos/mds-tmu-mrp
+export INPUT_PATH=${BASE_DIR}/data/processed/k_core_filtered/15core/rating_only
+export OUTPUT_PATH=${BASE_DIR}/data/processed/random_split
+export SEQ_PATH=${OUTPUT_PATH}/seq
+cd $BASE_DIR
+cd src/preprocess/rec
+python -m 03_random_80_20_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH
 ```
 
 See the [benchmark_scripts](https://github.com/hyp1231/AmazonReviews2023/blob/main/benchmark_scripts/README.md) from [amazon-reviews-2023](https://github.com/hyp1231/AmazonReviews2023) for more details.
@@ -89,11 +120,21 @@ sudo reset.sh
 ## BPRMF
 
 ```bash
-python -m main_bprmf --data_name baseline-kg --data_dir ~/llm-enhanced-kg-rec/data/kg --n_epoch 100 --test_batch_size=1000 --use_pretrain 0 --train_batch_size=20000
+export BASE_DIR=~/repos/mds-tmu-mrp
+export DATA_DIR=${BASE_DIR}/data/kg
+export DATA_NAME=baseline-kg
+cd ${BASE_DIR}/src
+python -m main_bprmf --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 0 --train_batch_size=20000
 ```
 To resume training from a pre-trained model, use the `pretrain_model_path` argument.
 ```bash
-python -m main_bprmf --data_name baseline-kg --data_dir ~/llm-enhanced-kg-rec/data/kg --n_epoch 100 --test_batch_size=1000 --use_pretrain 2 --train_batch_size=100000 --pretrain_model_path ~/llm-enhanced-kg-rec/src/trained_model/BPRMF/baseline-kg/embed-dim64_lr0.0001_pretrain2/model_epoch30.pth  --pretrain_embedding_dir ~/llm-enhanced-kg-rec/data/kg/baseline-kg/pretrain
+export BASE_DIR=~/repos/mds-tmu-mrp
+export DATA_DIR=${BASE_DIR}/data/kg
+export DATA_NAME=baseline-kg
+export PRETRAIN_MODEL_PATH=${BASE_DIR}/src/trained_model/BPRMF/baseline-kg/embed-dim64_lr0.0001_pretrain0/model_epoch100.pth
+export PRETRAIN_EMBEDDING_DIR=${BASE_DIR}/data/kg/baseline-kg/pretrain
+cd ${BASE_DIR}/src
+python -m main_bprmf --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 2 --train_batch_size=20000 --pretrain_model_path $PRETRAIN_MODEL_PATH  --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR
 ```
 
 ## KGAT
@@ -102,6 +143,15 @@ python -m main_bprmf --data_name baseline-kg --data_dir ~/llm-enhanced-kg-rec/da
 python -m main_kgat --data_name baseline-kg --data_dir ~/llm-enhanced-kg-rec/data/kg --n_epoch 100 --test_batch_size=1000 --use_pretrain 0 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_embedding_dir ~/llm-enhanced-kg-rec/data/kg/baseline-kg/pretrain
 ```
 
+If using embeddings from a pre-trained model, use the `use_pretrain` argument.
+```bash
+export BASE_DIR=~/repos/mds-tmu-mrp
+export DATA_DIR=${BASE_DIR}/data/kg
+export DATA_NAME=baseline-kg
+export PRETRAIN_EMBEDDING_DIR=${BASE_DIR}/data/kg/baseline-kg/pretrain
+cd ${BASE_DIR}/src
+python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=20000 --kg_batch_size 20000 --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR
+```
 
 
 
@@ -112,19 +162,6 @@ python -m main_kgat --data_name baseline-kg --data_dir ~/llm-enhanced-kg-rec/dat
 ```
 CUDACXX=/usr/local/cuda-12/bin/nvcc CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_ARCHITECTURES=native" FORCE_CMAKE=1 pip install pandas numpy scikit-learn scipy implicit
 ```
-
-python -m main_kgat --data_name amazon-book --data_dir ~/repos/mds-tmu-mrp/datasets --use_pretrain 0  --test_batch_size=500   --n_epoch 1 --cf_batch_size 8192 --kg_batch_size 8192 
-
-python -m main_bprmf --data_name amazon-book --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 1 --test_batch_size=150 --use_pretrain 0
-
-nohup python -m main_kgat --data_name baseline-kg --data_dir ~/mds-tmu-mrp/datasets --use_pretrain 0  --test_batch_size=500   --n_epoch 100 --cf_batch_size 8192 --kg_batch_size 8192 1> training.log 2> training.err &
-
-python -m main_bprmf --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 100 --test_batch_size=1000 --use_pretrain 0 --train_batch_size=20000
-
-
-python -m main_kgat --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_embedding_dir /home/kchauhan/repos/mds-tmu-mrp/datasets/baseline-kg/pretrain 
-
-python -m main_kgat --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=20000 --kg_batch_size 20000 --pretrain_embedding_dir /home/kchauhan/repos/mds-tmu-mrp/datasets/baseline-kg/pretrain
 
 python -m main_bprmf --data_name amazon-book --data_dir ~/repos/mds-tmu-mrp/datasets --n_epoch 5 --test_batch_size=150 --use_pretrain 0 --train_batch_size=32768  
 
@@ -144,7 +181,6 @@ nohup python -m main_bprmf --data_name baseline-kg --data_dir ~/mds-tmu-mrp/data
 
 python main_kgat.py 
 
-K-cores (i.e., dense subsets): These data have been reduced to extract the k-core, such that each of the remaining users and items have k reviews each.
 
 Ratings only: These datasets include no metadata or reviews, but only (user,item,rating,timestamp) tuples. Thus they are suitable for use with mymedialite (or similar) packages.
 
