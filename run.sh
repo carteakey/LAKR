@@ -6,6 +6,10 @@ export ROOT=/home/kchauhan/repos/mds-tmu-mrp
 export SRC=$ROOT/src
 export LOGS=$ROOT/logs
 export DB=$ROOT/db
+export DATA_NAME=baseline-kg
+export DATA_DIR=$ROOT/data/kg
+
+
 
 # Create logs directory if it doesn't exist
 mkdir -p $LOGS
@@ -128,11 +132,19 @@ if [ "$1" == "train_kgat" ]; then
   echo "KGAT model training completed." | tee -a $LOGS/train_kgat_$DATE.log
 fi
 
+# Train KGAT model from pre-trained
+if [ "$1" == "train_kgat_pretrained" ]; then
+  echo "Training KGAT model from pre-trained..."
+  cd $SRC
+  python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 2 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_model_path $PRETRAIN_MODEL_PATH --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR | tee -a $LOGS/train_kgat_pretrained_$DATE.log
+  echo "KGAT model training from pre-trained completed." | tee -a $LOGS/train_kgat_pretrained_$DATE.log
+fi
+
 # Extract relationships using LLM
 if [ "$1" == "extract_relationships" ]; then
   echo "Extracting relationships using LLM..."
   cd $SRC/kg-extract 
-  python -m 01_kg_review_extraction --relationship RELATED_AUTHOR --model gpt-4o-mini | tee -a $LOGS/extract_relationships_$DATE.log
+  python -m 01_kg_review_extraction --relationship DEALS_WITH_CONCEPTS --model gpt-4o-mini | tee -a $LOGS/extract_relationships_$DATE.log
   echo "Relationships extracted." | tee -a $LOGS/extract_relationships_$DATE.log
 fi
 
@@ -140,7 +152,7 @@ fi
 if [ "$1" == "evaluate_relationships" ]; then
   echo "Evaluating extracted relationships..."
   cd $SRC/kg-extract
-  python -m 02_kg_extraction_rating.py --relationship SIMILAR_TO_BOOK --model llama3 | tee -a $LOGS/evaluate_relationships_$DATE.log
+  python -m 02_kg_extraction_rating.py --relationship ALL --model llama3 | tee -a $LOGS/evaluate_relationships_$DATE.log
   echo "Relationships evaluated." | tee -a $LOGS/evaluate_relationships_$DATE.log
 fi
 
