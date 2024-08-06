@@ -8,7 +8,7 @@ export LOGS=$ROOT/logs
 export DB=$ROOT/db
 export DATA_NAME=baseline-kg
 export DATA_DIR=$ROOT/data/kg
-
+export PRETRAIN_EMBEDDING_DIR=$ROOT/data/kg/baseline-kg/pretrain
 
 
 # Create logs directory if it doesn't exist
@@ -136,7 +136,7 @@ fi
 if [ "$1" == "train_kgat_pretrained" ]; then
   echo "Training KGAT model from pre-trained..."
   cd $SRC
-  python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 2 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_model_path $PRETRAIN_MODEL_PATH --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR | tee -a $LOGS/train_kgat_pretrained_$DATE.log
+  python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_model_path $PRETRAIN_MODEL_PATH --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR | tee -a $LOGS/train_kgat_pretrained_$DATE.log
   echo "KGAT model training from pre-trained completed." | tee -a $LOGS/train_kgat_pretrained_$DATE.log
 fi
 
@@ -152,7 +152,7 @@ fi
 if [ "$1" == "evaluate_relationships" ]; then
   echo "Evaluating extracted relationships..."
   cd $SRC/kg-extract
-  python -m 02_kg_extraction_rating.py --relationship ALL --model llama3 | tee -a $LOGS/evaluate_relationships_$DATE.log
+  python -m 02_kg_extraction_rating --relationship ALL --model llama3 | tee -a $LOGS/evaluate_relationships_$DATE.log
   echo "Relationships evaluated." | tee -a $LOGS/evaluate_relationships_$DATE.log
 fi
 
@@ -160,7 +160,7 @@ fi
 if [ "$1" == "update_kg" ]; then
   echo "Updating the KG with extracted relationships..."
   cd $SRC/kg-extract
-  python -m 03_neo4j_update_kg.py --relationship SIMILAR_TO_BOOK | tee -a $LOGS/update_kg_$DATE.log
+  python -m 03_neo4j_update_kg --relationship SIMILAR_TO_BOOK | tee -a $LOGS/update_kg_$DATE.log
   echo "KG updated with extracted relationships." | tee -a $LOGS/update_kg_$DATE.log
 fi
 
