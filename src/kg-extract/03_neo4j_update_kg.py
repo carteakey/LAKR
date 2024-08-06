@@ -34,18 +34,18 @@ def reset_processing_status():
     finally:
         con.close()
 
-    try:
-        neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-        with neo4j_driver.session() as session:
-            session.run("MATCH (s:Book)-[r:SIMILAR_TO_BOOK]->(t:Book) DELETE r")
-            logging.info("SIMILAR_TO_BOOK relationships have been deleted.")
-    except Exception as e:
-        logging.error(f"Error deleting SIMILAR_TO_BOOK relationships: {e}")
-    finally:
-        neo4j_driver.close()
+    # try:
+    #     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    #     with neo4j_driver.session() as session:
+    #         session.run("MATCH (s:Book)-[r:SIMILAR_TO_BOOK]->(t:Book) DELETE r")
+    #         logging.info("SIMILAR_TO_BOOK relationships have been deleted.")
+    # except Exception as e:
+    #     logging.error(f"Error deleting SIMILAR_TO_BOOK relationships: {e}")
+    # finally:
+    #     neo4j_driver.close()
 
 # Uncomment the following line to reset the table
-reset_processing_status()
+# reset_processing_status()
 
 class Neo4jUpdater:
     def __init__(self, uri, auth):
@@ -73,6 +73,7 @@ class Neo4jUpdater:
             logging.warning(f"Book with ASIN {main_book_asin} does not exist, skipping.")
             return False
 
+        # Create or match Concept nodes
         for node in json_data['nodes']:
             node_name = node['id']
             node_type = node['type']
@@ -89,6 +90,7 @@ class Neo4jUpdater:
 
             source_id = source['id']
             target_id = target['id']
+            source_type = source['type']
             target_type = target['type']
 
             if rel_type == 'SIMILAR_TO_BOOK':
@@ -123,13 +125,25 @@ class Neo4jUpdater:
                         logging.info(f"Fuzzy match found for book title: {target_id} -> {best_match[0]} with score {match_score}")
                     else:
                         logging.warning(f"No close match found for book title: {target_id}")
+            
+            elif rel_type == 'DEALS_WITH_CONCEPTS':
+                tx.run("""
+                    MATCH (s:Book {parent_asin: $main_asin})
+                    MATCH (t:Concept {name: $target_name})
+                    MERGE (s)-[r:DEALS_WITH_CONCEPTS]->(t)
+                """, main_asin=main_book_asin, target_name=target_id)
+                logging.info(f"Relationship created: {main_book_asin} -[DEALS_WITH_CONCEPTS]-> {target_id}")
+
             else:
+                # Handle other relationship types
                 tx.run(f"""
-                    MATCH (s:Book {{parent_asin: $main_asin}})
+                    MATCH (s:{source_type} {{name: $source_name}})
                     MATCH (t:{target_type} {{name: $target_name}})
                     MERGE (s)-[r:{rel_type}]->(t)
-                """, main_asin=main_book_asin, target_name=target_id)
-                logging.info(f"Relationship created: {main_book_asin} -[{rel_type}]-> {target_id}")
+                """, source_name=source_id, target_name=target_id)
+                logging.info(f"Relationship created: {source_id} -[{rel_type}]-> {target_id}")
+
+        return True
 
         return True
 
