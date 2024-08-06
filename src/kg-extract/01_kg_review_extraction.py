@@ -9,11 +9,13 @@ from langchain_experimental.graph_transformers import LLMGraphTransformer
 from langchain_openai import ChatOpenAI
 from langchain_community.chat_models import ChatOllama
 from langchain_core.documents import Document
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from langchain_community.callbacks import get_openai_callback
 import signal
 from dotenv import load_dotenv
 import pandas as pd
 import argparse
+import concurrent.futures
 
 # Load environment variables
 load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
@@ -27,6 +29,8 @@ args = parser.parse_args()
 # Constants
 BATCH_SIZE = 10
 TIMEOUT_SECONDS = 10
+MAX_WORKERS = 5  # Number of threads
+
 if args.relationship == 'ALL':
     allowed_relationships = ['SIMILAR_TO_BOOK', 'DEALS_WITH_CONCEPTS', 'PART_OF_SERIES', 'RELATED_AUTHOR']
     allowed_nodes = ['Book', 'Author', 'Concept', 'Series']
@@ -259,6 +263,34 @@ def process_review(row):
 def timeout_handler(signum, frame):
     raise TimeoutError("Review processing timed out")
 
+# Worker function for threading
+def worker(row):
+    try:
+        # Process the review with a timeout
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(process_review, row)
+            result = future.result(timeout=TIMEOUT_SECONDS)
+        return result
+    except concurrent.futures.TimeoutError:
+        print(f"Timeout occurred while processing review: {row[1]}")
+        # Handle the timeout and store skipped review
+        store_skipped_review(
+            row[5],
+            row[1],
+            "Processing timeout",
+            {
+                "title": row[0],
+                "parent_asin": row[1],
+                "review_title": row[2],
+                "review_text": row[3],
+                "helpful_vote": row[4],
+            },
+        )
+        return "skipped"
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return "skipped"
+
 # Modified main processing loop
 total_reviews = get_total_unprocessed_reviews()
 processed_reviews = 0
@@ -292,35 +324,20 @@ while True:
     if not batch:
         break  # No more reviews to process
 
-    for row in batch:
-        # Process review (unchanged)
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(TIMEOUT_SECONDS)
-
-        try:
-            result = process_review(row)
-            if result == "processed":
-                processed_reviews += 1
-            elif result == "skipped":
+    # Using ThreadPoolExecutor to parallelize the processing
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(worker, row) for row in batch]
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                if result == "processed":
+                    processed_reviews += 1
+                elif result == "skipped":
+                    skipped_reviews += 1
+            except concurrent.futures.TimeoutError:
+                print(f"Timeout occurred for a review in batch")
                 skipped_reviews += 1
-        except TimeoutError:
-            print(f"\nTimeout occurred while processing review: {row[1]}")
-            store_skipped_review(
-                row[5],
-                row[1],
-                "Processing timeout",
-                {
-                    "title": row[0],
-                    "parent_asin": row[1],
-                    "review_title": row[2],
-                    "review_text": row[3],
-                    "helpful_vote": row[4],
-                },
-            )
-            skipped_reviews += 1
-        finally:
-            signal.alarm(0)
-
+                
         # Update progress
         progress = (processed_reviews / total_reviews) * 100
         print(f"\rProgress: {progress:.2f}% ({processed_reviews}/{total_reviews}), Skipped: {skipped_reviews}", end="", flush=True)
