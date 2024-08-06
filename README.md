@@ -27,7 +27,9 @@ For CUDA support:
 CUDACXX=/usr/local/cuda-12/bin/nvcc CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_ARCHITECTURES=native" FORCE_CMAKE=1 pip install pandas numpy scikit-learn scipy implicit
 ```
 
-## Data Preprocessing
+
+Below commands are available inside the run.sh wrapper script as well.
+## Data Preprocessing 
 
 ### K-core Filtering
 
@@ -73,19 +75,20 @@ python -m 03_random_80_20_split --input_path $INPUT_PATH --output_path $OUTPUT_P
 #### Load K-core Ratings
 
 ```bash
-python -m src/preprocess/kg/01_load_kcore_ratings_duckdb.py
+cd ${BASE_DIR}/src/preprocess/kg
+python -m 01_load_kcore_ratings_duckdb
 ```
 
 #### Load Metadata and Reviews
 
 ```bash
-python -m src/preprocess/kg/02_load_metadata_reviews_duckdb.py
+python -m 02_load_metadata_reviews_duckdb
 ```
 
 #### Load Metadata as Baseline KG
 
 ```bash
-python -m src/preprocess/kg/03_load_metadata_neo4j.py
+python -m 03_load_metadata_neo4j
 ```
 
 ## Knowledge Graph Augmentation using LLM
