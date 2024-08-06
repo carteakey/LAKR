@@ -20,15 +20,28 @@ load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process reviews for a specific relationship type.")
-parser.add_argument("--relationship", type=str, help="Relationship type to process (e.g., SIMILAR_TO_BOOK, RELATED_AUTHOR)")
+parser.add_argument("--relationship", type=str, help="Relationship type to process (e.g., RELATED_TO_AUTHOR)")
 parser.add_argument("--model", type=str, default="llama3", help="Language model to use (gpt-4o-mini, llama3, phi3-mini)")
 args = parser.parse_args()
 
 # Constants
 BATCH_SIZE = 10
 TIMEOUT_SECONDS = 10
-allowed_relationships = [args.relationship]  # Only process the specified relationship # 'SIMILAR_TO_BOOK'
-allowed_nodes = ["Book"]
+if args.relationship == 'ALL':
+    allowed_relationships = ['SIMILAR_TO_BOOK', 'DEALS_WITH_CONCEPTS', 'PART_OF_SERIES', 'RELATED_AUTHOR']
+    allowed_nodes = ['Book', 'Author', 'Concept', 'Series']
+else:
+    allowed_relationships = [args.relationship]
+    if args.relationship == 'SIMILAR_TO_BOOK':
+        allowed_nodes = ['Book']    
+    elif args.relationship == 'DEALS_WITH_CONCEPTS':
+        allowed_nodes = ['Book', 'Concept']
+    elif args.relationship == 'PART_OF_SERIES':
+        allowed_nodes = ['Book', 'Series']
+    elif args.relationship == 'RELATED_AUTHOR':
+        allowed_nodes = ['Book', 'Author']
+    else:
+        raise ValueError(f"Invalid relationship type: {args.relationship}")
 model = args.model
 
 # Initialize Neo4j graph and language model (unchanged)
@@ -43,7 +56,9 @@ elif model == 'phi3-mini':
 
 chat_template = create_unstructured_prompt(allowed_nodes, allowed_relationships)
 llm_transformer = LLMGraphTransformer(
-    llm=llm, allowed_nodes=allowed_nodes, allowed_relationships=allowed_relationships
+    llm=llm, 
+    allowed_nodes=allowed_nodes, 
+    allowed_relationships=allowed_relationships
 )
 
 # Connect to DuckDB

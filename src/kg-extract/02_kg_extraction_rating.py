@@ -12,7 +12,7 @@ load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Rate extractions for a specific relationship type.")
-parser.add_argument("--relationship", type=str, help="Relationship type to rate (e.g., SIMILAR_TO_BOOK, RELATED_AUTHOR)")
+parser.add_argument("--relationship", type=str, help="Relationship type to rate (e.g., SIMILAR_TO_BOOK, RELATED_AUTHOR, 'ALL')")
 parser.add_argument("--model", type=str, default="llama3", help="Language model to use (gpt-4o-mini, llama3, phi3-mini)")
 args = parser.parse_args()
 
