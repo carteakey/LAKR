@@ -20,6 +20,11 @@ set -e
 # Activate virtual environment
 . .venv/bin/activate
 
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$2"
+}
+
 # Backup the DuckDB database
 if [ "$1" == "backup_duckdb" ]; then
   echo "Backing up DuckDB database..."
@@ -136,32 +141,68 @@ fi
 if [ "$1" == "train_kgat_pretrained" ]; then
   echo "Training KGAT model from pre-trained..."
   cd $SRC
-  python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_model_path $PRETRAIN_MODEL_PATH --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR | tee -a $LOGS/train_kgat_pretrained_$DATE.log
+  python -u -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_model_path $PRETRAIN_MODEL_PATH --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR | tee -a $LOGS/train_kgat_pretrained_$DATE.log
   echo "KGAT model training from pre-trained completed." | tee -a $LOGS/train_kgat_pretrained_$DATE.log
 fi
 
 # Extract relationships using LLM
 if [ "$1" == "extract_relationships" ]; then
-  echo "Extracting relationships using LLM..."
-  cd $SRC/kg-extract 
-  python -m 01_kg_review_extraction --relationship DEALS_WITH_CONCEPTS --model gpt-4o-mini | tee -a $LOGS/extract_relationships_$DATE.log
-  echo "Relationships extracted." | tee -a $LOGS/extract_relationships_$DATE.log
+    LOGFILE="$LOGS/extract_relationships_$DATE.log"
+    log_message "Extracting relationships using LLM..." "$LOGFILE"
+    cd $SRC/kg-extract 
+  
+    # Check if a relationship is provided
+    if [ "$2" != "--relationship" ] || [ -z "$3" ]; then
+        log_message "Error: Relationship not specified. Usage: ./run.sh extract_relationships --relationship RELATIONSHIP_TYPE" "$LOGFILE"
+        exit 1
+    fi
+  
+    # Extract the relationship from the command line argument
+    RELATIONSHIP="$3"
+  
+    log_message "Starting extraction for relationship: $RELATIONSHIP" "$LOGFILE"
+    python -m 01_kg_review_extraction --relationship "$RELATIONSHIP" --model llama3 --max_batches 10 2>&1 | tee -a "$LOGFILE"
+    log_message "Relationships of type $RELATIONSHIP extracted." "$LOGFILE"
 fi
 
 # Evaluate extracted relationships
 if [ "$1" == "evaluate_relationships" ]; then
-  echo "Evaluating extracted relationships..."
-  cd $SRC/kg-extract
-  python -m 02_kg_extraction_rating --relationship ALL --model llama3 | tee -a $LOGS/evaluate_relationships_$DATE.log
-  echo "Relationships evaluated." | tee -a $LOGS/evaluate_relationships_$DATE.log
+    LOGFILE="$LOGS/evaluate_relationships_$DATE.log"
+    log_message "Evaluating extracted relationships..." "$LOGFILE"
+    cd $SRC/kg-extract
+    
+    # Check if a relationship is provided
+    if [ "$2" != "--relationship" ] || [ -z "$3" ]; then
+        log_message "Error: Relationship not specified. Usage: ./run.sh evaluate_relationships --relationship RELATIONSHIP_TYPE" "$LOGFILE"
+        exit 1
+    fi
+  
+    # Extract the relationship from the command line argument
+    RELATIONSHIP="$3"
+    
+    log_message "Starting evaluation for relationship: $RELATIONSHIP" "$LOGFILE"
+    python -m 02_kg_extraction_rating --relationship "$RELATIONSHIP" --model llama3 2>&1 | tee -a "$LOGFILE"
+    log_message "Relationships of type $RELATIONSHIP evaluated." "$LOGFILE"
 fi
 
 # Update the KG with extracted relationships
 if [ "$1" == "update_kg" ]; then
-  echo "Updating the KG with extracted relationships..."
-  cd $SRC/kg-extract
-  python -m 03_neo4j_update_kg --relationship SIMILAR_TO_BOOK | tee -a $LOGS/update_kg_$DATE.log
-  echo "KG updated with extracted relationships." | tee -a $LOGS/update_kg_$DATE.log
+    LOGFILE="$LOGS/update_kg_$DATE.log"
+    log_message "Updating the KG with extracted relationships..." "$LOGFILE"
+    cd $SRC/kg-extract
+  
+    # Check if a relationship is provided
+    if [ "$2" != "--relationship" ] || [ -z "$3" ]; then
+        log_message "Error: Relationship not specified. Usage: ./run.sh update_kg --relationship RELATIONSHIP_TYPE" "$LOGFILE"
+        exit 1
+    fi
+  
+    # Extract the relationship from the command line argument
+    RELATIONSHIP="$3"
+  
+    log_message "Starting KG update for relationship: $RELATIONSHIP" "$LOGFILE"
+    python -m 03_neo4j_update_kg --relationship "$RELATIONSHIP" 2>&1 | tee -a "$LOGFILE"
+    log_message "KG updated with extracted relationships of type $RELATIONSHIP." "$LOGFILE"
 fi
 
 # Deactivate virtual environment
