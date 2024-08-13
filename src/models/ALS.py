@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from scipy.sparse import csr_matrix
 from implicit.als import AlternatingLeastSquares
-from implicit.evaluation import precision_at_k, mean_average_precision_at_k, ndcg_at_k
+from implicit.evaluation import ranking_metrics_at_k
 from scipy.sparse import csr_matrix
 from tqdm import tqdm
 from itertools import product
@@ -51,7 +51,7 @@ class RecommendationSystem:
             for item, _ in recommendations
         ]
 
-    def evaluate(self, test_df, k=10):
+    def evaluate(self, test_df, k=20):
         # Create a user-item interaction matrix for the test set
         test_user_item = csr_matrix(
             (
@@ -64,26 +64,23 @@ class RecommendationSystem:
         )
 
         # Calculate metrics
-        precision = precision_at_k(
+        metrics = ranking_metrics_at_k(
             self.model, self.item_user_data, test_user_item, k, show_progress=True
         )
-        map_score = mean_average_precision_at_k(
-            self.model, self.item_user_data, test_user_item, k, show_progress=True
-        )
-        ndcg = ndcg_at_k(
-            self.model, self.item_user_data, test_user_item, k, show_progress=True
-        )
-
-        # round the metrics to 4 decimal places
-        precision = round(precision, 4)
-        map_score = round(map_score, 4)
-        ndcg = round(ndcg, 4)
-        return {f"precision@{k}": precision, f"MAP@{k}": map_score, f"NDCG@{k}": ndcg}
+        print (metrics)
+        precision, recall, map_score, ndcg = metrics['precision'], metrics['recall'], metrics['map'], metrics['ndcg']
+        
+        return {
+            f"precision@{k}": precision,
+            f"recall@{k}": recall,
+            f"map@{k}": map_score,
+            f"ndcg@{k}": ndcg,
+        }
 
 
 def load_and_preprocess_data(file_path):
     print(f"Loading data from {file_path}...")
-    df = pd.read_csv(file_path, header=None, names=["user_id","timestamp",  "rating", "parent_asin" ])
+    df = pd.read_csv(file_path, header=None, names=["user_id","parent_asin", "rating","timestamp"  ])
     print("Preprocessing data...")
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
     df = df.sort_values(["user_id", "timestamp"])
@@ -110,9 +107,9 @@ def filter_seen_items(train_df, test_df):
 
 def main():
     # Load and preprocess data
-    train_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.train.csv"
-    valid_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.valid.csv"
-    test_file = "/home/kchauhan/repos/mds-tmu-mrp/datasets/last_out_split/Books.test.csv"
+    train_file = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.train.csv"
+    valid_file = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.valid.csv"
+    test_file = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.test.csv"
 
     train_df = load_and_preprocess_data(train_file)
     valid_df = load_and_preprocess_data(valid_file)
@@ -120,7 +117,7 @@ def main():
 
     # Define hyperparameters grid
     hyperparameters_grid = {
-        "factors": [10, 50, 100, 1000, 2000],
+        "factors": [10, 50, 100, 200],
         "regularization": [0.01],
         "alpha": [1.0],
     }
@@ -128,7 +125,7 @@ def main():
     best_validation_score = float("-inf")
     best_hyperparameters = {}
     best_model = None
-    k = 10
+    k = 20
 
     # Perform grid search
     for combination in product(*hyperparameters_grid.values()):
