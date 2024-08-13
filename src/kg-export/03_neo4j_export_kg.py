@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # DuckDB configuration
 DB_FILE = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
 
-def process_kg_and_user_data(neo4j_uri, neo4j_username, neo4j_password, output_dir, train_csv, valid_csv, test_csv):
+def process_kg_and_user_data(neo4j_uri, neo4j_username, neo4j_password, output_dir, train_csv, valid_csv, test_csv, excluded_node_types=None, excluded_relations=None):
     neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_username, neo4j_password))
     
     # Load rating_only_positive data from DuckDB
@@ -37,7 +37,8 @@ def process_kg_and_user_data(neo4j_uri, neo4j_username, neo4j_password, output_d
         result = session.run("""
             MATCH (a)-[r]->(b)
             RETURN id(a) AS head_id, id(r) AS relation_id, id(b) AS tail_id, 
-                   type(r) AS relation_type, a.parent_asin AS head_asin, b.parent_asin AS tail_asin
+                   labels(a) AS head_labels, type(r) AS relation_type, labels(b) AS tail_labels,
+                   a.parent_asin AS head_asin, b.parent_asin AS tail_asin
         """)
         
         with open(f"{output_dir}/kg_final.txt", "w") as kg_file:
@@ -45,30 +46,36 @@ def process_kg_and_user_data(neo4j_uri, neo4j_username, neo4j_password, output_d
                 head_id = record["head_id"]
                 relation_id = record["relation_id"]
                 tail_id = record["tail_id"]
+                head_labels = record["head_labels"]
                 relation_type = record["relation_type"]
+                tail_labels = record["tail_labels"]
                 head_asin = record["head_asin"]
                 tail_asin = record["tail_asin"]
                 
                 # Only process items that are in rating_only_positive_item_ids
                 if (head_asin in rating_only_positive_item_ids or 
                     tail_asin in rating_only_positive_item_ids):
-                    # Map entities and relations to integer IDs
-                    if head_id not in entity_dict:
-                        entity_dict[head_id] = entity_counter
-                        if head_asin:
-                            item_dict[head_asin] = entity_counter
-                        entity_counter += 1
-                    if tail_id not in entity_dict:
-                        entity_dict[tail_id] = entity_counter
-                        if tail_asin:
-                            item_dict[tail_asin] = entity_counter
-                        entity_counter += 1
-                    if relation_type not in relation_dict:
-                        relation_dict[relation_type] = relation_counter
-                        relation_counter += 1
-                    
-                    # Write KG triple with remapped IDs
-                    kg_file.write(f"{entity_dict[head_id]}\t{relation_dict[relation_type]}\t{entity_dict[tail_id]}\n")
+                    # Exclude specified node types and relations
+                    if excluded_node_types is None or (not any(label in excluded_node_types for label in head_labels) and 
+                                                       not any(label in excluded_node_types for label in tail_labels)):
+                        if excluded_relations is None or relation_type not in excluded_relations:
+                            # Map entities and relations to integer IDs
+                            if head_id not in entity_dict:
+                                entity_dict[head_id] = entity_counter
+                                if head_asin:
+                                    item_dict[head_asin] = entity_counter
+                                entity_counter += 1
+                            if tail_id not in entity_dict:
+                                entity_dict[tail_id] = entity_counter
+                                if tail_asin:
+                                    item_dict[tail_asin] = entity_counter
+                                entity_counter += 1
+                            if relation_type not in relation_dict:
+                                relation_dict[relation_type] = relation_counter
+                                relation_counter += 1
+                            
+                            # Write KG triple with remapped IDs
+                            kg_file.write(f"{entity_dict[head_id]}\t{relation_dict[relation_type]}\t{entity_dict[tail_id]}\n")
 
     # Write entity list
     with open(f"{output_dir}/entity_list.txt", "w") as entity_file:
@@ -140,4 +147,8 @@ train_csv = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.
 valid_csv = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.valid.csv"
 test_csv = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.test.csv"
 
-process_kg_and_user_data(neo4j_uri, neo4j_username, neo4j_password, output_dir, train_csv, valid_csv, test_csv)
+# Exclude certain node types and relationship types if needed
+excluded_node_types = [] #["Concept"]
+excluded_relations = [] #["DEALS_WITH_CONCEPTS"]
+
+process_kg_and_user_data(neo4j_uri, neo4j_username, neo4j_password, output_dir, train_csv, valid_csv, test_csv, excluded_node_types, excluded_relations)
