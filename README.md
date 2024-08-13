@@ -32,8 +32,17 @@ Below commands are available inside the run.sh wrapper script as well.
 ## Data Preprocessing 
 
 ### K-core Filtering
+#### Download the Amazon Reviews dataset 
+(Note that the initial download will take some time.)
 
-Filter the dataset to retain users and items with at least 15 interactions:
+```bash
+BASE_DIR=~/repos/mds-tmu-mrp
+cd $BASE_DIR/data/raw
+wget https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/review_categories/Books.jsonl.gz
+gunzip Books.jsonl.gz
+```
+
+Filter the dataset to retain users and items with at least 15 interactions :
 
 ```bash
 BASE_DIR=~/repos/mds-tmu-mrp
@@ -65,7 +74,7 @@ python -m 02_timestamp_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH
 
 ```bash
 OUTPUT_PATH=${BASE_DIR}/data/processed/random_split
-python -m 03_random_80_20_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH
+python -m 03_random_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH
 ```
 
 ## Data Loading
@@ -80,6 +89,8 @@ python -m 01_load_kcore_ratings_duckdb
 ```
 
 #### Load Metadata and Reviews
+
+This takes some time as the metadata and reviews are downloaded in huggingface format and then loaded into DuckDB.
 
 ```bash
 python -m 02_load_metadata_reviews_duckdb
@@ -143,6 +154,12 @@ To use pre-trained embeddings:
 
 ```bash
 python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=20000 --kg_batch_size 20000 --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR
+```
+
+To predict for a user:
+
+```bash
+python -m predict_kgat --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/data/kg --pretrain_model_path /home/kchauhan/repos/mds-tmu-mrp/src/trained_model/KGAT/baseline-kg/embed-dim64_relation-dim64_random-walk_bi-interaction_64-32-16_lr0.0001_pretrain1/model_epoch90.pth --pretrain_embedding_dir /home/kchauhan/repos/mds-tmu-mrp/data/kg/baseline-kg/pretrain
 ```
 
 ## Resetting the Databases
