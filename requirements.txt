@@ -7,6 +7,7 @@ pandas
 langchain
 langchain-community
 langchain-openai
+langchain-google-genai
 langchain-experimental
 neo4j
 jupyter
@@ -15,3 +16,4 @@ tabulate
 torch
 fuzzywuzzy 
 python-Levenshtein
+pillow
