@@ -66,8 +66,9 @@ class Neo4jUpdater:
                     RETURN b.title AS title, b.parent_asin AS asin
                 """)
             }
+            # Keep original case for concepts
             self.existing_concepts = [
-                record["name"].lower() for record in session.run("""
+                record["name"] for record in session.run("""
                     MATCH (n:Concept)
                     RETURN n.name AS name
                 """)
@@ -89,13 +90,20 @@ class Neo4jUpdater:
 
         # Create or match Concept nodes with fuzzy matching
         for node in json_data['nodes']:
-            node_name = node['id'].lower()
+            node_name = node['id']
             node_type = node['type']
 
             if node_type in ['Feature', 'Concept']:
-                best_match = max(self.existing_concepts, key=lambda x: fuzz.ratio(x, node_name), default=None)
+                # Use case-insensitive comparison for fuzzy matching
+                best_match = None
+                highest_ratio = 0
+                for existing_concept in self.existing_concepts:
+                    ratio = fuzz.ratio(existing_concept.lower(), node_name.lower())
+                    if ratio > highest_ratio:
+                        highest_ratio = ratio
+                        best_match = existing_concept
 
-                if best_match and fuzz.ratio(best_match, node_name) > 85:
+                if best_match and highest_ratio > 85:
                     matched_name = best_match
                     tx.run(f"""
                         MATCH (n:{node_type} {{name: $matched_name}})
@@ -110,6 +118,8 @@ class Neo4jUpdater:
                         CREATE (n:{node_type} {{name: $name}})
                     """, name=node_name)
                     logging.info(f"Created new {node_type}: {node_name}")
+                    self.existing_concepts.append(node_name)  # Add to cache
+
 
         for rel in json_data['relationships']:
             source = rel['source']
@@ -137,7 +147,7 @@ class Neo4jUpdater:
                 else:
                     best_match = max(self.existing_books.keys(), key=lambda x: fuzz.ratio(x, target_id.lower()))
                     match_score = fuzz.ratio(best_match, target_id.lower())
-                    if match_score > 90:
+                    if match_score > 85:
                         target_asin = self.existing_books[best_match]
                         tx.run("""
                             MATCH (s:Book {parent_asin: $main_asin})
@@ -150,9 +160,16 @@ class Neo4jUpdater:
                         return False
 
             elif rel_type == 'DEALS_WITH_CONCEPTS':
-                best_match = max(self.existing_concepts, key=lambda x: fuzz.ratio(x, target_id.lower()), default=None)
+                # Use case-insensitive comparison for fuzzy matching
+                best_match = None
+                highest_ratio = 0
+                for existing_concept in self.existing_concepts:
+                    ratio = fuzz.ratio(existing_concept.lower(), target_id.lower())
+                    if ratio > highest_ratio:
+                        highest_ratio = ratio
+                        best_match = existing_concept
 
-                if best_match and fuzz.ratio(best_match, target_id.lower()) > 85:
+                if best_match and highest_ratio > 85:
                     matched_name = best_match
                     tx.run("""
                         MATCH (s:Book {parent_asin: $main_asin})
