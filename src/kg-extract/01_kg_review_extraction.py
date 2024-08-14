@@ -2,6 +2,7 @@ import os
 import duckdb
 import json
 import time
+import re
 from neo4j import GraphDatabase
 from langchain_community.graphs import Neo4jGraph
 from utils.llm_custom import create_unstructured_prompt
@@ -71,6 +72,7 @@ llm_transformer = LLMGraphTransformer(
 )
 
 # Connect to DuckDB
+# TODO: Update the path to the DuckDB database file
 con = duckdb.connect("/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb")
 
 # Initialize Neo4j driver
@@ -143,7 +145,8 @@ def is_review_processed(user_id, item_id):
         "SELECT status FROM review_processing_status WHERE user_id = ? AND item_id = ? AND relationship_type = ?",
         [user_id, item_id, args.relationship],
     ).fetchone()
-    return result is not None and result[0] == "processed"
+    return result is not None 
+    # and result[0] == "processed"
 
 def update_review_status(user_id, item_id, json_data):
     con.execute(
@@ -160,9 +163,19 @@ def store_skipped_review(user_id, item_id, reason, review_data):
     except Exception as e:
         print(f"Error storing skipped review: {e}")
 
-def process_review(row):
-    user_id, item_id = row[5], row[1]
+def extract_author_name(author_str):
+    # Regex to extract the name value
+    match = re.search(r"'name': '([^']+)'", author_str)
+    if match:
+        return match.group(1)
+    return None
 
+def process_review(row):
+    user_id, item_id,author_str = row[5], row[1], row[7]
+
+    # Extract the author's name
+    author_name = extract_author_name(author_str)
+    
     if is_review_processed(user_id, item_id):
         return "already_processed"
 
@@ -180,7 +193,7 @@ def process_review(row):
         )
         return "skipped"
     
-    text = f"Book: {row[0]}\nAuthor: \nReview Title: {row[2]}\nReview Text: {row[3]}"
+    text = f"Book: {row[0]}\nAuthor: {author_name}\nReview Title: {row[3]}\nReview Text: {row[4]}"
     documents = [Document(page_content=text)]
 
     try:
@@ -291,7 +304,7 @@ def main():
 
         batch = con.execute(f"""
             SELECT b.title, b.parent_asin, a.title as review_title, a.text as review_text, a.helpful_vote, a.user_id,
-                   CASE WHEN t.item IS NOT NULL THEN 1 ELSE 0 END as is_test_item
+                   CASE WHEN t.item IS NOT NULL THEN 1 ELSE 0 END as is_test_item, b.author
             FROM raw_review_Books a
             INNER JOIN raw_meta_Books b ON a.parent_asin = b.parent_asin
             LEFT JOIN test_set t ON a.parent_asin = t.item
