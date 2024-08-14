@@ -12,6 +12,7 @@
 - [Numpy](https://numpy.org/)
 - [Scikit-learn](https://scikit-learn.org/)
 - [Scipy](https://www.scipy.org/)
+- [Docker Compose](https://docs.docker.com/compose/)
 
 ### Installation
 
@@ -27,8 +28,24 @@ For CUDA support:
 CUDACXX=/usr/local/cuda-12/bin/nvcc CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_ARCHITECTURES=native" FORCE_CMAKE=1 pip install pandas numpy scikit-learn scipy implicit
 ```
 
+Start the databases:
 
-Below commands are available inside the run.sh wrapper script as well.
+Neo4j:
+```bash
+cd db/neo4j
+docker compose up -d
+```
+Please note that the Neo4j database is started with the default password `neo4j`. The password is changed after the first run.
+
+Postgres:
+```bash
+cd db/postgres
+docker compose up -d
+```
+
+### Running the Code
+Update the variables inside the run.sh  and config/env.sh files to point to the correct directories.
+
 ## Data Preprocessing 
 
 ### K-core Filtering
@@ -36,20 +53,13 @@ Below commands are available inside the run.sh wrapper script as well.
 (Note that the initial download will take some time.)
 
 ```bash
-BASE_DIR=~/repos/mds-tmu-mrp
-cd $BASE_DIR/data/raw
-wget https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/review_categories/Books.jsonl.gz
-gunzip Books.jsonl.gz
+./run.sh download_amazon_reviews
 ```
 
 Filter the dataset to retain users and items with at least 15 interactions :
 
 ```bash
-BASE_DIR=~/repos/mds-tmu-mrp
-INPUT_PATH=${BASE_DIR}/data/raw
-OUTPUT_PATH=${BASE_DIR}/data/processed/k_core_filtering
-cd $BASE_DIR/src/preprocess/rec
-python -m 01_k_core_filtering.py -k 15 --input_path $INPUT_PATH --output_path $OUTPUT_PATH 
+./run.sh k_core_filtering
 ```
 
 ### Splitting the Data
@@ -57,24 +67,19 @@ python -m 01_k_core_filtering.py -k 15 --input_path $INPUT_PATH --output_path $O
 #### Last Out Split
 
 ```bash
-INPUT_PATH=${BASE_DIR}/data/processed/k_core_filtered/15core/rating_only
-OUTPUT_PATH=${BASE_DIR}/data/processed/last_out_split
-SEQ_PATH=${OUTPUT_PATH}/seq
-python -m 02_last_out_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH
+./run.sh last_out_split
 ```
 
 #### Timestamp Split
 
 ```bash
-OUTPUT_PATH=${BASE_DIR}/data/processed/timestamp_split
-python -m 02_timestamp_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH
+./run.sh timestamp_split
 ```
 
 #### Random Split
 
 ```bash
-OUTPUT_PATH=${BASE_DIR}/data/processed/random_split
-python -m 03_random_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH
+./run.sh random_split
 ```
 
 ## Data Loading
@@ -84,8 +89,7 @@ python -m 03_random_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --
 #### Load K-core Ratings
 
 ```bash
-cd ${BASE_DIR}/src/preprocess/kg
-python -m 01_load_kcore_ratings_duckdb
+./run.sh load_kcore_ratings_duckdb
 ```
 
 #### Load Metadata and Reviews
@@ -93,13 +97,13 @@ python -m 01_load_kcore_ratings_duckdb
 This takes some time as the metadata and reviews are downloaded in huggingface format and then loaded into DuckDB.
 
 ```bash
-python -m 02_load_metadata_reviews_duckdb
+./run.sh load_metadata_reviews_duckdb
 ```
 
 #### Load Metadata as Baseline KG
 
 ```bash
-python -m 03_load_metadata_neo4j
+./run.sh load_metadata_neo4j
 ```
 
 ## Knowledge Graph Augmentation using LLM
@@ -107,20 +111,19 @@ python -m 03_load_metadata_neo4j
 ### Extract Relationships (e.g., SIMILAR_TO_BOOK, RELATED_AUTHOR)
 
 ```bash
-cd ${BASE_DIR}/src/kg-extract 
-python -m 01_kg_review_extraction --relationship SIMILAR_TO_BOOK --model gpt-4o-mini
+./run.sh extract_relationships --relationship SIMILAR_TO_BOOK --max_batches 10
 ```
 
 ### Evaluate Extracted Relationships
 
 ```bash
-python -m 02_kg_extraction_rating.py --relationship SIMILAR_TO_BOOK --model llama3
+./run.sh evaluate_relationships --relationship SIMILAR_TO_BOOK
 ```
 
 ### Update KG with Extracted Relationships
 
 ```bash
-python -m 03_neo4j_update_kg.py --relationship SIMILAR_TO_BOOK
+./run.sh update_kg --relationship SIMILAR_TO_BOOK
 ```
 
 
@@ -131,35 +134,25 @@ python -m 03_neo4j_update_kg.py --relationship SIMILAR_TO_BOOK
 Train the BPRMF model:
 
 ```bash
-DATA_DIR=${BASE_DIR}/data/kg
-DATA_NAME=baseline-kg
-python -m main_bprmf --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 0 --train_batch_size=20000
+./run.sh train_bprmf
 ```
 
 To resume training from a pre-trained model:
 
 ```bash
-PRETRAIN_MODEL_PATH=${BASE_DIR}/src/trained_model/BPRMF/baseline-kg/embed-dim64_lr0.0001_pretrain0/model_epoch100.pth
-PRETRAIN_EMBEDDING_DIR=${BASE_DIR}/data/kg/baseline-kg/pretrain
-python -m main_bprmf --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 2 --train_batch_size=20000 --pretrain_model_path $PRETRAIN_MODEL_PATH --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR
+./run.sh train_bprmf_pretrained
 ```
 
 ### KGAT
 
 ```bash
-python -m main_kgat --data_name baseline-kg --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 0 --cf_batch_size=10000 --kg_batch_size 10000 --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR
+./run.sh train_kgat
 ```
 
 To use pre-trained embeddings:
 
 ```bash
-python -m main_kgat --data_name $DATA_NAME --data_dir $DATA_DIR --n_epoch 100 --test_batch_size=1000 --use_pretrain 1 --cf_batch_size=20000 --kg_batch_size 20000 --pretrain_embedding_dir $PRETRAIN_EMBEDDING_DIR
-```
-
-To predict for a user:
-
-```bash
-python -m predict_kgat --data_name baseline-kg --data_dir ~/repos/mds-tmu-mrp/data/kg --pretrain_model_path /home/kchauhan/repos/mds-tmu-mrp/src/trained_model/KGAT/baseline-kg/embed-dim64_relation-dim64_random-walk_bi-interaction_64-32-16_lr0.0001_pretrain1/model_epoch90.pth --pretrain_embedding_dir /home/kchauhan/repos/mds-tmu-mrp/data/kg/baseline-kg/pretrain
+./run.sh train_kgat_pretrained
 ```
 
 ## Resetting the Databases
@@ -176,3 +169,11 @@ rm -rf db/duckdb/amazon-reviews.db
 cd db/neo4j
 sudo reset.sh
 ```
+
+### Reset Postgres
+
+```bash
+cd db/postgres
+sudo reset.sh
+```
+
