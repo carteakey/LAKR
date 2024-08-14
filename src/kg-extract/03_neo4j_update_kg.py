@@ -25,7 +25,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-
 def reset_processing_status():
     con = duckdb.connect(DUCKDB_PATH)
     try:
@@ -35,16 +34,6 @@ def reset_processing_status():
         logging.error(f"Error resetting processing status: {e}")
     finally:
         con.close()
-
-    # try:
-    #     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    #     with neo4j_driver.session() as session:
-    #         session.run("MATCH (s:Book)-[r:SIMILAR_TO_BOOK]->(t:Book) DELETE r")
-    #         logging.info("SIMILAR_TO_BOOK relationships have been deleted.")
-    # except Exception as e:
-    #     logging.error(f"Error deleting SIMILAR_TO_BOOK relationships: {e}")
-    # finally:
-    #     neo4j_driver.close()
 
 # Uncomment the following line to reset the table
 # reset_processing_status()
@@ -101,7 +90,7 @@ class Neo4jUpdater:
                 node_type = node['type']
 
                 if node_type in ['Series']:
-                    self._create_or_match_node(tx, node_type, node_name)
+                    self._create_or_match_series(tx, node_type, node_name)
                 elif node_type in ['Feature', 'Concept']:
                     self._create_or_match_concept(tx, node_type, node_name)
 
@@ -131,15 +120,15 @@ class Neo4jUpdater:
 
         return True
         
-    def _create_or_match_node(self, tx, node_type, node_name):
-        if node_type == 'Book':
-            if node_name.lower() not in self.existing_books:
-                tx.run("""
-                    MERGE (n:Book {title: $name, parent_asin: $asin})
-                """, name=node_name, asin=node_name)  # Using name as ASIN for simplicity; adjust if you have actual ASIN
-                logging.info(f"Created new Book: {node_name}")
-                self.existing_books[node_name.lower()] = node_name  # Using title as ASIN for simplicity
-        elif node_type == 'Series':
+    def _create_or_match_series(self, tx, node_type, node_name):
+        # if node_type == 'Book':
+            # if node_name.lower() not in self.existing_books:
+            #     tx.run("""
+            #         MERGE (n:Book {title: $name, parent_asin: $asin})
+            #     """, name=node_name, asin=node_name)  # Using name as ASIN for simplicity; adjust if you have actual ASIN
+            #     logging.info(f"Created new Book: {node_name}")
+            #     self.existing_books[node_name.lower()] = node_name  # Using title as ASIN for simplicity
+        if node_type == 'Series':
             best_match = self._find_best_match(node_name, self.existing_series)
             if best_match:
                 logging.info(f"Matched existing Series: {best_match}")
@@ -242,40 +231,6 @@ class Neo4jUpdater:
             return self.existing_books[best_match]
         return None
 
-    def cleanup_concepts(self):
-        with self.driver.session() as session:
-            session.write_transaction(self._cleanup_concepts)
-    
-    @staticmethod
-    def _cleanup_concepts(tx):
-        # Remove concepts that are linked to one book or fewer
-        result = tx.run("""
-            MATCH (c:Concept)
-            WHERE COUNT { (c)<-[:DEALS_WITH_CONCEPTS]-() } <= 1
-            WITH c, c.name AS name
-            DETACH DELETE c
-            RETURN count(c) as removed_concepts, collect(name) as removed_names
-
-        """)
-        
-        cleanup_stats = result.single()
-        removed_count = cleanup_stats['removed_concepts']
-        removed_names = cleanup_stats['removed_names']
-
-        logging.info(f"Cleaned up {removed_count} concepts that were linked to one book or fewer.")
-        logging.debug(f"Removed concepts: {', '.join(removed_names)}")
-
-        # Optionally, we could also log concepts with low connections (e.g., 2-3) for review
-        low_connection_result = tx.run("""
-            MATCH (c:Concept)
-            WHERE 1 < COUNT { (c)<-[:DEALS_WITH_CONCEPTS]-() } <= 3
-            RETURN c.name as name, COUNT { (c)<-[:DEALS_WITH_CONCEPTS]-() } as links
-            ORDER BY links
-        """)
-                
-        for record in low_connection_result:
-            logging.info(f"Low-connection concept: {record['name']} (links: {record['links']})")
-
 def process_duckdb_records():
     updater = Neo4jUpdater(NEO4J_URI, (NEO4J_USER, NEO4J_PASSWORD))
     con = duckdb.connect(DUCKDB_PATH)
@@ -298,8 +253,6 @@ def process_duckdb_records():
     except Exception as e:
         logging.error(f"Error during update process: {e}")
     finally:
-        # 
-        # updater.cleanup_concepts()
         updater.close()
         con.close()
         
