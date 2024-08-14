@@ -90,7 +90,7 @@ class Neo4jUpdater:
             main_book_asin = json_data['parent_asin']
             main_book_title = json_data['title']
             logging.info(f"Processing main book with ASIN: {main_book_asin}, title: {main_book_title}")
-
+            # Check if main book exists
             if main_book_asin not in self.existing_books.values():
                 logging.warning(f"Book with ASIN {main_book_asin} does not exist, skipping.")
                 return False

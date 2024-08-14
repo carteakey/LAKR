@@ -27,9 +27,9 @@ elif model == "llama3":
 con = duckdb.connect("/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb")
 
 def reset_ratings():
-    con.execute(f"UPDATE review_processing_status SET rating = NULL WHERE relationship_type = '{args.relationship}'")
+    con.execute(f"UPDATE review_processing_status SET rating = NULL WHERE relationship_type = '{args.relationship}' and status = 'processed'")
 
-reset_ratings()
+# reset_ratings()
 
 def get_kg_extraction_rating_prompt(input):
     rate_kg_extraction = f"""
@@ -42,6 +42,7 @@ def get_kg_extraction_rating_prompt(input):
         Just provide the rating.
         If the source and target books are the same, rate the extraction as 1.
         Do not provide any feedback.
+        Do not return any information about the source or target books.
         Based on your knowledge, rate the accuracy of the extracted knowledge graph.
         The Allowed nodes and relationships are:
         - Nodes: {input['nodes']}
