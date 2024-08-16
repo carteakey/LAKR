@@ -1,21 +1,27 @@
-import os
-import duckdb
+import argparse
+import concurrent.futures
 import json
-import time
+import os
 import re
-from neo4j import GraphDatabase
-from langchain_community.graphs import Neo4jGraph
-from utils.llm_custom import create_unstructured_prompt
-from langchain_experimental.graph_transformers import LLMGraphTransformer
-from langchain_openai import ChatOpenAI
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import duckdb
+import pandas as pd
+from dotenv import load_dotenv
 from langchain_community.chat_models import ChatOllama
 from langchain_core.documents import Document
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import concurrent.futures
-from dotenv import load_dotenv
-import pandas as pd
-import argparse
+from langchain_experimental.graph_transformers import LLMGraphTransformer
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
+
+from ..utils.llm_custom import create_unstructured_prompt
+from ..utils.db.neo4j import initialize_neo4j_driver
+
+# Constants
+BATCH_SIZE = 10
+TIMEOUT_SECONDS = 10
+MAX_WORKERS = 1  # Number of threads
 
 # Load environment variables
 load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
@@ -26,11 +32,6 @@ parser.add_argument("--relationship", type=str, help="Relationship type to proce
 parser.add_argument("--model", type=str, default="llama3", help="Language model to use (gpt-4o-mini, llama3, phi3-mini, gemini)")
 parser.add_argument("--max_batches", type=int, default=None, help="Maximum number of batches to process")
 args = parser.parse_args()
-
-# Constants
-BATCH_SIZE = 10
-TIMEOUT_SECONDS = 10
-MAX_WORKERS = 1  # Number of threads
 
 # Relationship and node configurations
 RELATIONSHIP_CONFIGS = {
@@ -52,9 +53,6 @@ if not config:
 allowed_relationships = config.get('relationships', [args.relationship])
 allowed_nodes = config['nodes']
 
-# Initialize Neo4j graph and language model
-graph = Neo4jGraph()
-
 MODEL_CONFIGS = {
     "gpt-4o-mini": lambda: ChatOpenAI(temperature=0, model_name="gpt-4o-mini"),
     "llama3": lambda: ChatOllama(model="llama3.1:8b-instruct-q4_0", temperature=0),
@@ -74,12 +72,12 @@ llm_transformer = LLMGraphTransformer(
 # Connect to DuckDB
 # TODO: Update the path to the DuckDB database file
 con = duckdb.connect("/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb")
+# con.sql("""ATTACH 'dbname=amazon_reviews user=admin password=adminpassword host=127.0.0.1' AS pg (TYPE POSTGRES);""")
+# con.sql("USE pg;")
+
 
 # Initialize Neo4j driver
-neo4j_uri = os.getenv("NEO4J_URI")
-neo4j_user = os.getenv("NEO4J_USER")
-neo4j_password = os.getenv("NEO4J_PASSWORD")
-neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
+neo4j_driver = initialize_neo4j_driver()
 
 def asin_exists_in_neo4j(asin):
     with neo4j_driver.session() as session:
