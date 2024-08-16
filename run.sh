@@ -2,14 +2,8 @@
 
 # Set environment variables
 export DATE=$(date '+%Y-%m-%d-%H-%M-%S')
-export ROOT=/home/kchauhan/repos/mds-tmu-mrp
-export SRC=$ROOT/src
-export LOGS=$ROOT/logs
-export DB=$ROOT/db
-export DATA_NAME=baseline-kg
-export DATA_DIR=$ROOT/data/kg
-export PRETRAIN_EMBEDDING_DIR=$ROOT/data/kg/baseline-kg/pretrain
-
+# import env.sh
+. env.sh
 
 # Create logs directory if it doesn't exist
 mkdir -p $LOGS
@@ -24,6 +18,15 @@ set -e
 log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$2"
 }
+
+# Downlad the dataset
+if [ "$1" == "download_amazon_reviews" ]; then
+  echo "Downloading the dataset..."
+  cd $ROOT/data/raw
+  wget https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/review_categories/Books.jsonl.gz | tee -a $LOGS/download_dataset_$DATE.log
+  gunzip Books.jsonl.gz | tee -a $LOGS/download_dataset_$DATE.log
+  echo "Dataset downloaded." | tee -a $LOGS/download_dataset_$DATE.log
+fi
 
 # Backup the DuckDB database
 if [ "$1" == "backup_duckdb" ]; then
@@ -79,22 +82,24 @@ fi
 # Load K-core ratings to DuckDB
 if [ "$1" == "load_kcore_ratings_duckdb" ]; then
   echo "Loading K-core ratings to DuckDB..."
-  cd $ROOT
-  python -m src/preprocess/kg/01_load_kcore_ratings_duckdb.py | tee -a $LOGS/load_kcore_ratings_duckdb_$DATE.log
+  cd $ROOT/src/preprocess/kg
+  python -m 01_load_kcore_ratings_duckdb.py | tee -a $LOGS/load_kcore_ratings_duckdb_$DATE.log
   echo "K-core ratings loaded to DuckDB." | tee -a $LOGS/load_kcore_ratings_duckdb_$DATE.log
 fi
 
 # Load metadata and reviews to DuckDB
 if [ "$1" == "load_metadata_reviews_duckdb" ]; then
   echo "Loading metadata and reviews to DuckDB..."
-  python -m src/preprocess/kg/02_load_metadata_reviews_duckdb.py | tee -a $LOGS/load_metadata_reviews_duckdb_$DATE.log
+  cd $ROOT/src/preprocess/kg
+  python -m kg/02_load_metadata_reviews_duckdb.py | tee -a $LOGS/load_metadata_reviews_duckdb_$DATE.log
   echo "Metadata and reviews loaded to DuckDB." | tee -a $LOGS/load_metadata_reviews_duckdb_$DATE.log
 fi
 
 # Load metadata as a baseline KG to Neo4j
 if [ "$1" == "load_metadata_neo4j" ]; then
   echo "Loading metadata as a baseline KG to Neo4j..."
-  python -m src/preprocess/kg/03_load_metadata_neo4j.py | tee -a $LOGS/load_metadata_neo4j_$DATE.log
+  cd $ROOT/src/preprocess/kg
+  python -m 03_load_metadata_neo4j.py | tee -a $LOGS/load_metadata_neo4j_$DATE.log
   echo "Metadata loaded as a baseline KG to Neo4j." | tee -a $LOGS/load_metadata_neo4j_$DATE.log
 fi
 
@@ -161,7 +166,7 @@ if [ "$1" == "extract_relationships" ]; then
     RELATIONSHIP="$3"
   
     log_message "Starting extraction for relationship: $RELATIONSHIP" "$LOGFILE"
-    python -m 01_kg_review_extraction --relationship "$RELATIONSHIP" --model llama3 --max_batches 10 2>&1 | tee -a "$LOGFILE"
+    python -m 01_kg_review_extraction --relationship "$RELATIONSHIP" --model llama3 --max_batches 2 2>&1 | tee -a "$LOGFILE"
     log_message "Relationships of type $RELATIONSHIP extracted." "$LOGFILE"
 fi
 
@@ -203,6 +208,17 @@ if [ "$1" == "update_kg" ]; then
     log_message "Starting KG update for relationship: $RELATIONSHIP" "$LOGFILE"
     python -m 03_neo4j_update_kg --relationship "$RELATIONSHIP" 2>&1 | tee -a "$LOGFILE"
     log_message "KG updated with extracted relationships of type $RELATIONSHIP." "$LOGFILE"
+fi
+
+# Cleanup KG using 04_neo4j_cleanup script
+if [ "$1" == "cleanup_kg" ]; then
+  LOGFILE="$LOGS/cleanup_kg_$DATE.log"
+
+  log_message "Cleaning up KG using 04_neo4j_cleanup script..." "$LOGFILE"
+  cd $SRC/kg-extract
+  log_message "Starting KG cleanup..." "$LOGFILE"
+  python -m 04_neo4j_cleanup 2>&1 | tee -a "$LOGFILE"
+  log_message "KG cleanup completed." "$LOGFILE"
 fi
 
 # Deactivate virtual environment
