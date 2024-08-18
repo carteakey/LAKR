@@ -1,10 +1,16 @@
 import subprocess
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
 # Docker and Neo4j details
 DOCKER_CONTAINER_NAME = "neo4j-apoc"  # Your Neo4j container name
-BACKUP_DIR = "/home/kchauhan/repos/mds-tmu-mrp/datasets/baseline-kg"  # Replace with your desired backup directory on the host
+
+# Load environment variables
+load_dotenv(os.getenv('BASE_DIR')+'/env.sh')
+
+DATA_DIR = os.getenv('DATA_DIR')
+BACKUP_DIR = DATA_DIR + "/backup"  # Replace with your desired backup directory on the host
 
 def create_backup():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

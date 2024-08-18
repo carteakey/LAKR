@@ -1,13 +1,21 @@
-import os
 import logging
+import os 
+
+from dotenv import load_dotenv
 from neo4j import GraphDatabase
 from neo4j.exceptions import Neo4jError
 from tabulate import tabulate
 
+from ..utils.db.neo4j import initialize_neo4j_driver
+
+# Load environment variables
+load_dotenv(os.getenv('BASE_DIR')+'/env.sh')
+
+neo4j_driver = initialize_neo4j_driver()
 
 class Neo4jGraphStats:
-    def __init__(self, uri, user, password):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+    def __init__(self, neo4j_driver):
+        self.driver = neo4j_driver
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
@@ -206,21 +214,11 @@ class Neo4jGraphStats:
 
         return stats
 
+stats = Neo4jGraphStats(neo4j_driver)
+table = stats.get_stats()
+print(tabulate(table, headers=["Metric", "Value"], tablefmt="grid"))
 
-def main():
-    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    user = os.getenv("NEO4J_USER", "neo4j")
-    password = os.getenv("NEO4J_PASSWORD", "tmu-2024")
+latex_table = stats.get_stats_latex()
+print(latex_table)
 
-    stats = Neo4jGraphStats(uri, user, password)
-    table = stats.get_stats()
-    print(tabulate(table, headers=["Metric", "Value"], tablefmt="grid"))
-
-    latex_table = stats.get_stats_latex()
-    print(latex_table)
-
-    stats.close()
-
-
-if __name__ == "__main__":
-    main()
+stats.close()
