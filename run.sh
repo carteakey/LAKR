@@ -182,7 +182,6 @@ fi
 if [ "$1" == "extract_relationships" ]; then
     LOGFILE="$LOGS/extract_relationships_$DATE.log"
     log_message "Extracting relationships using LLM..." "$LOGFILE"
-    cd $SRC/kg-extract 
   
     # Check if a relationship is provided
     if [ "$2" != "--relationship" ] || [ -z "$3" ]; then
@@ -194,7 +193,7 @@ if [ "$1" == "extract_relationships" ]; then
     RELATIONSHIP="$3"
   
     log_message "Starting extraction for relationship: $RELATIONSHIP" "$LOGFILE"
-    python -m 01_kg_review_extraction --relationship "$RELATIONSHIP" --model llama3 --max_batches 2 2>&1 | tee -a "$LOGFILE"
+    python -m src.kg-extract.01_kg_review_extraction --relationship "$RELATIONSHIP" --model gemma2 --max_batches 2 2>&1 | tee -a "$LOGFILE"
     log_message "Relationships of type $RELATIONSHIP extracted." "$LOGFILE"
 fi
 
@@ -214,7 +213,7 @@ if [ "$1" == "evaluate_relationships" ]; then
     RELATIONSHIP="$3"
     
     log_message "Starting evaluation for relationship: $RELATIONSHIP" "$LOGFILE"
-    python -m 02_kg_extraction_rating --relationship "$RELATIONSHIP" --model llama3 2>&1 | tee -a "$LOGFILE"
+    python -m 02_kg_extraction_rating --relationship "$RELATIONSHIP" --model gemma2 2>&1 | tee -a "$LOGFILE"
     log_message "Relationships of type $RELATIONSHIP evaluated." "$LOGFILE"
 fi
 
