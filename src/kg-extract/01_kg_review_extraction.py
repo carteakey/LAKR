@@ -17,6 +17,7 @@ from langchain_openai import ChatOpenAI
 
 from ..utils.llm_custom import create_unstructured_prompt
 from ..utils.db.neo4j import initialize_neo4j_driver
+from ..utils.db.duck_db import initialize_duckdb
 
 # Constants
 BATCH_SIZE = 10
@@ -24,7 +25,7 @@ TIMEOUT_SECONDS = 10
 MAX_WORKERS = 1  # Number of threads
 
 # Load environment variables
-load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
+load_dotenv(os.getenv('BASE_DIR')+'/env.sh')
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process reviews for a specific relationship type.")
@@ -57,7 +58,8 @@ MODEL_CONFIGS = {
     "gpt-4o-mini": lambda: ChatOpenAI(temperature=0, model_name="gpt-4o-mini"),
     "llama3": lambda: ChatOllama(model="llama3.1:8b-instruct-q4_0", temperature=0),
     'phi3-mini': lambda: ChatOllama(model='phi3:3.8b-mini-4k-instruct-q6_K', temperature=0),
-    'gemini': lambda: ChatGoogleGenerativeAI(model="gemini-1.5-flash")
+    'gemini': lambda: ChatGoogleGenerativeAI(model="gemini-1.5-flash"),
+    'gemma2': lambda: ChatOllama(model="gemma2:9b-instruct-q4_K_M", temperature=0),
 }
 
 llm = MODEL_CONFIGS.get(args.model, MODEL_CONFIGS["llama3"])()
@@ -71,13 +73,16 @@ llm_transformer = LLMGraphTransformer(
 
 # Connect to DuckDB
 # TODO: Update the path to the DuckDB database file
-con = duckdb.connect("/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb")
-# con.sql("""ATTACH 'dbname=amazon_reviews user=admin password=adminpassword host=127.0.0.1' AS pg (TYPE POSTGRES);""")
-# con.sql("USE pg;")
-
+con = duckdb.connect("/home/kchauhan/repos/mds/LAKR/db/duckdb/amazon_reviews.duckdb")
+con.sql("""ATTACH 'dbname=amazon_reviews user=admin password=adminpassword host=127.0.0.1' AS pg (TYPE POSTGRES);""")
+con.sql("USE pg;")
 
 # Initialize Neo4j driver
 neo4j_driver = initialize_neo4j_driver()
+
+# Initialize Duckdb
+con = initialize_duckdb()
+
 
 def asin_exists_in_neo4j(asin):
     with neo4j_driver.session() as session:
@@ -87,31 +92,34 @@ def asin_exists_in_neo4j(asin):
 # Create tables if they don't exist
 def create_tables():
     con.execute("""
-        CREATE TABLE IF NOT EXISTS review_processing_status (
+        CREATE TABLE IF NOT EXISTS pg.review_processing_status (
             user_id VARCHAR,
             item_id VARCHAR,
             relationship_type VARCHAR,
+            model VARCHAR,
             status VARCHAR,
             json_data JSON,
             rating INTEGER,
-            PRIMARY KEY (user_id, item_id, relationship_type)
+            PRIMARY KEY (user_id, item_id, relationship_type, model)
         )
     """)
 
     con.execute("""
-        CREATE TABLE IF NOT EXISTS skipped_reviews (
+        CREATE TABLE IF NOT EXISTS pg.skipped_reviews (
             user_id VARCHAR,
             item_id VARCHAR,
             relationship_type VARCHAR,
+            model VARCHAR,
             reason VARCHAR,
             review_data JSON,
-            PRIMARY KEY (user_id, item_id, relationship_type)
+            PRIMARY KEY (user_id, item_id, relationship_type, model)
         )
     """)
 
+
 # Load test set into a temporary table
 def load_test_set():
-    test_csv_path = '/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.test.csv'
+    test_csv_path = '/home/kchauhan/repos/mds/LAKR/data/processed/random_split/Books.test.csv'
     test_df = pd.read_csv(test_csv_path, header=None, names=['user', 'item', 'rating', 'timestamp'])
     con.register('test_df', test_df)
     con.execute("""
@@ -127,36 +135,37 @@ def get_total_unprocessed_reviews():
         LEFT JOIN test_set t ON a.parent_asin = t.item
         WHERE CAST(a.helpful_vote AS INT) > 0
         AND NOT EXISTS (
-            SELECT 1 FROM review_processing_status
+            SELECT 1 FROM pg.review_processing_status
             WHERE user_id = a.user_id AND item_id = a.parent_asin AND relationship_type = '{args.relationship}'
         )
         AND NOT EXISTS (
-            SELECT 1 FROM skipped_reviews
+            SELECT 1 FROM pg.skipped_reviews
             WHERE user_id = a.user_id AND item_id = a.parent_asin AND relationship_type = '{args.relationship}'
         )
         AND LENGTH(a.text) > 100
     """).fetchone()
     return result[0] if result else 0
 
-def is_review_processed(user_id, item_id):
+def is_review_processed(user_id, item_id, model):
     result = con.execute(
-        "SELECT status FROM review_processing_status WHERE user_id = ? AND item_id = ? AND relationship_type = ?",
-        [user_id, item_id, args.relationship],
+        "SELECT status FROM pg.review_processing_status WHERE user_id = ? AND item_id = ? AND relationship_type = ? AND model = ?",
+        [user_id, item_id, args.relationship, model],
     ).fetchone()
-    return result is not None 
+    return result is not None
+
     # and result[0] == "processed"
 
-def update_review_status(user_id, item_id, json_data):
+def update_review_status(user_id, item_id, json_data, model):
     con.execute(
-        "INSERT INTO review_processing_status (user_id, item_id, relationship_type, status, json_data) VALUES (?, ?, ?, 'processed', ?)",
-        [user_id, item_id, args.relationship, json.dumps(json_data)],
+        "INSERT INTO pg.review_processing_status (user_id, item_id, relationship_type, model, status, json_data) VALUES (?, ?, ?, ?, 'processed', ?)",
+        [user_id, item_id, args.relationship, model, json.dumps(json_data)],
     )
 
-def store_skipped_review(user_id, item_id, reason, review_data):
+def store_skipped_review(user_id, item_id, reason, review_data, model):
     try:
         con.execute(
-            "INSERT INTO skipped_reviews (user_id, item_id, relationship_type, reason, review_data) VALUES (?, ?, ?, ?, ?)",
-            [user_id, item_id, args.relationship, reason, json.dumps(review_data)],
+            "INSERT INTO pg.skipped_reviews (user_id, item_id, relationship_type, model, reason, review_data) VALUES (?, ?, ?, ?, ?, ?)",
+            [user_id, item_id, args.relationship, model, reason, json.dumps(review_data)],
         )
     except Exception as e:
         print(f"Error storing skipped review: {e}")
@@ -174,7 +183,8 @@ def process_review(row):
     # Extract the author's name
     author_name = extract_author_name(author_str)
     
-    if is_review_processed(user_id, item_id):
+    # Update relevant function calls
+    if is_review_processed(user_id, item_id, args.model):
         return "already_processed"
 
     if not asin_exists_in_neo4j(item_id):
@@ -187,7 +197,7 @@ def process_review(row):
                 "review_title": row[2],
                 "review_text": row[3],
                 "helpful_vote": row[4],
-            },
+            },args.model
         )
         return "skipped"
     
@@ -210,7 +220,7 @@ def process_review(row):
                 "review_text": row[3],
                 "helpful_vote": row[4],
                 "error": str(e),
-            },
+            },args.model
         )
         return "skipped"
 
@@ -237,7 +247,7 @@ def process_review(row):
                 "review_title": row[2],
                 "review_text": row[3],
                 "helpful_vote": row[4],
-            },
+            },args.model
         )
         return "skipped"
 
@@ -257,7 +267,7 @@ def process_review(row):
     with open(f"output/{args.model}/{args.relationship}/{timestamp}_{user_id}_{row[1]}.json", "w") as f:
         json.dump(json_data, f, indent=2)
 
-    update_review_status(user_id, item_id, json_data)
+    update_review_status(user_id, item_id, json_data, args.model)
     return "processed"
 
 def worker(row):
@@ -276,7 +286,7 @@ def worker(row):
                 "review_title": row[2],
                 "review_text": row[3],
                 "helpful_vote": row[4],
-            },
+            },args.model
         )
         return "skipped"
     except Exception as e:
@@ -302,18 +312,18 @@ def main():
 
         batch = con.execute(f"""
             SELECT b.title, b.parent_asin, a.title as review_title, a.text as review_text, a.helpful_vote, a.user_id,
-                   CASE WHEN t.item IS NOT NULL THEN 1 ELSE 0 END as is_test_item, b.author
+                CASE WHEN t.item IS NOT NULL THEN 1 ELSE 0 END as is_test_item, b.author
             FROM raw_review_Books a
             INNER JOIN raw_meta_Books b ON a.parent_asin = b.parent_asin
             LEFT JOIN test_set t ON a.parent_asin = t.item
             WHERE CAST(a.helpful_vote AS INT) > 0
             AND NOT EXISTS (
-                SELECT 1 FROM review_processing_status
-                WHERE user_id = a.user_id AND item_id = a.parent_asin AND relationship_type = '{args.relationship}'
+                SELECT 1 FROM pg.review_processing_status
+                WHERE user_id = a.user_id AND item_id = a.parent_asin AND relationship_type = '{args.relationship}' AND model = '{args.model}'
             )
             AND NOT EXISTS (
-                SELECT 1 FROM skipped_reviews
-                WHERE user_id = a.user_id AND item_id = a.parent_asin AND relationship_type = '{args.relationship}'
+                SELECT 1 FROM pg.skipped_reviews
+                WHERE user_id = a.user_id AND item_id = a.parent_asin AND relationship_type = '{args.relationship}' AND model = '{args.model}'
             )
             AND LENGTH(a.text) > 100
             ORDER BY is_test_item DESC, CAST(a.helpful_vote AS INT) DESC
@@ -322,7 +332,7 @@ def main():
 
         if not batch:
             break  # No more reviews to process
-    # Using ThreadPoolExecutor to parallelize the processing
+        # Using ThreadPoolExecutor to parallelize the processing
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = [executor.submit(worker, row) for row in batch]
             for future in as_completed(futures):
