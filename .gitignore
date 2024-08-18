@@ -38,3 +38,10 @@ archive
 !data/kg-export/baseline-kg/train.txt
 !data/kg-export/baseline-kg/user_list.txt
 !data/kg-export/baseline-kg/valid.txt
+
+# keep sample logs
+!logs/update_kg_2024-08-18-10-10-44.log
+!logs/cleanup_kg_2024-08-18-11-46-30.log
+!logs/BPRMF_training.log
+!logs/kg_samples/SIMILAR_TO_AUTHOR.json
+!logs/kg_samples/SIMILAR_TO_BOOK.json
