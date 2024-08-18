@@ -107,9 +107,9 @@ def filter_seen_items(train_df, test_df):
 
 def main():
     # Load and preprocess data
-    train_file = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.train.csv"
-    valid_file = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.valid.csv"
-    test_file = "/home/kchauhan/repos/mds-tmu-mrp/data/processed/random_split/Books.test.csv"
+    train_file = "/home/kchauhan/repos/mds/LAKR/data/processed/random_split/Books.train.csv"
+    valid_file = "/home/kchauhan/repos/mds/LAKR/data/processed/random_split/Books.valid.csv"
+    test_file = "/home/kchauhan/repos/mds/LAKR/data/processed/random_split/Books.test.csv"
 
     train_df = load_and_preprocess_data(train_file)
     valid_df = load_and_preprocess_data(valid_file)

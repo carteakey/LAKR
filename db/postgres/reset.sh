@@ -1,4 +1,4 @@
-cd /home/kchauhan/repos/mds-tmu-mrp/db/postgres
+cd $BASE_DIR/db/neo4j/db/postgres
 # stop the database
 docker compose down
 # delete the volume
