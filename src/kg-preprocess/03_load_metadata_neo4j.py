@@ -17,7 +17,7 @@ NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "tmu-2024"
 
 # DuckDB configuration
-DB_FILE = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
+DB_FILE = "/home/kchauhan/repos/mds/LAKR/db/duckdb/amazon_reviews.duckdb"
 con = duckdb.connect(DB_FILE)
 
 # Load rating_only_positive data once

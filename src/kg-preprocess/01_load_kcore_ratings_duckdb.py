@@ -3,10 +3,10 @@ from dotenv import load_dotenv
 import os
 
 # DuckDB configuration
-load_dotenv("/home/kchauhan/repos/mds-tmu-mrp/config/env.sh")
+load_dotenv("/home/kchauhan/repos/mds/LAKR/config/env.sh")
 con = duckdb.connect(os.getenv('DB_FILE'))
 
-DATASET = "/home/kchauhan/repos/mds-tmu-mrp/datasets/10core/rating_only/Books.csv"
+DATASET = "/home/kchauhan/repos/mds/LAKR/datasets/10core/rating_only/Books.csv"
 
 con.sql("DROP TABLE IF EXISTS rating_only")
 con.sql("CREATE TABLE rating_only (user_id VARCHAR, item_id VARCHAR, rating FLOAT, timestamp BIGINT)")

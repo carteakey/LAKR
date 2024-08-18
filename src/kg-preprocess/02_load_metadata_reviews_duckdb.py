@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 
 # DuckDB configuration
-DB_FILE = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
+DB_FILE = "/home/kchauhan/repos/mds/LAKR/db/duckdb/amazon_reviews.duckdb"
 con = duckdb.connect(DB_FILE)
 
 # Configure logging
