@@ -1,4 +1,4 @@
-# LLM Enhanced Knowledge Graph-Based Recommendation System
+# LAKR (LLM-Augmented Knowledge-Graph-Based Recommendation)
 
 ## Getting Started
 

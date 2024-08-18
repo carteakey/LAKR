@@ -5,24 +5,10 @@ __pycache__
 __pycache__/
 *.pyc
 
-*.dump
-*.aux
-*.bbl
-*.blg
-*.log
+.venv 
+*.log 
 *.out
-*.synctex.gz
-*.toc
-*.fdb*
-*.fls
-*.bcf 
-*.run.xml
-*.synctex(busy)
-*.synctex.gz(busy)
-*.lot 
-*.lof
 
-.venv
 data/**/*.csv
 db/neo4j/data/
 db/neo4j/plugins
@@ -40,3 +26,15 @@ db/neo4j/plugins
 *.tsv
 
 archive
+
+!data/kg-export
+!data/kg-export/baseline-kg
+!data/kg-export/baseline-kg/pretrain
+!data/kg-export/baseline-kg/entity_list.txt
+!data/kg-export/baseline-kg/item_list.txt
+!data/kg-export/baseline-kg/kg_final.txt
+!data/kg-export/baseline-kg/relation_list.txt
+!data/kg-export/baseline-kg/test.txt
+!data/kg-export/baseline-kg/train.txt
+!data/kg-export/baseline-kg/user_list.txt
+!data/kg-export/baseline-kg/valid.txt

@@ -19,6 +19,10 @@ log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$2"
 }
 
+#TODO: Suggest the available options
+# if 
+
+
 # Downlad the dataset
 if [ "$1" == "download_amazon_reviews" ]; then
   echo "Downloading the dataset..."
@@ -75,7 +79,7 @@ if [ "$1" == "random_split" ]; then
   OUTPUT_PATH=${ROOT}/data/processed/random_split
   SEQ_PATH=${OUTPUT_PATH}/seq
   cd $SRC/preprocess/rec
-  python -m 03_random_80_20_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH | tee -a $LOGS/random_split_$DATE.log
+  python -m 03_random_split --input_path $INPUT_PATH --output_path $OUTPUT_PATH --seq_path $SEQ_PATH | tee -a $LOGS/random_split_$DATE.log
   echo "Random split completed." | tee -a $LOGS/random_split_$DATE.log
 fi
 
@@ -118,6 +122,30 @@ if [ "$1" == "reset_neo4j" ]; then
   echo "Neo4j database reset." | tee -a $LOGS/reset_neo4j_$DATE.log
 fi
 
+# Generate neo4j stats
+if [ "$1" == "generate_neo4j_stats" ]; then
+  echo "Generating Neo4j stats..."
+  cd $ROOT
+  python -m src.kg-export.02_neo4j_gen_stats | tee -a $LOGS/generate_neo4j_stats_$DATE.log
+  echo "Neo4j stats generated." | tee -a $LOGS/generate_neo4j_stats_$DATE.log
+fi
+
+# Backup KG from docker 
+if [ "$1" == "backup_neo4j" ]; then
+  echo "Backing up Neo4j docker..."
+  cd $ROOT
+  python -m src.kg-export.01_neo4j_docker_backup | tee -a $LOGS/backup_neo4j$DATE.log
+  echo "Neo4j backed up." | tee -a $LOGS/backup_neo4j$DATE.log
+fi
+
+# Export KG from Neo4j
+if [ "$1" == "export_kg" ]; then
+  echo "Exporting KG from Neo4j..."
+  cd $ROOT
+  python -m src.kg-export.03_neo4j_export_kg | tee -a $LOGS/export_kg_$DATE.log
+  echo "KG exported from Neo4j." | tee -a $LOGS/export_kg_$DATE.log
+fi
+
 # Train BPRMF model
 if [ "$1" == "train_bprmf" ]; then
   echo "Training BPRMF model..."
@@ -142,7 +170,7 @@ if [ "$1" == "train_kgat" ]; then
   echo "KGAT model training completed." | tee -a $LOGS/train_kgat_$DATE.log
 fi
 
-# Train KGAT model from pre-trained
+# Train KGAT model from pre-trained embeddings
 if [ "$1" == "train_kgat_pretrained" ]; then
   echo "Training KGAT model from pre-trained..."
   cd $SRC
@@ -215,9 +243,8 @@ if [ "$1" == "cleanup_kg" ]; then
   LOGFILE="$LOGS/cleanup_kg_$DATE.log"
 
   log_message "Cleaning up KG using 04_neo4j_cleanup script..." "$LOGFILE"
-  cd $SRC/kg-extract
   log_message "Starting KG cleanup..." "$LOGFILE"
-  python -m 04_neo4j_cleanup 2>&1 | tee -a "$LOGFILE"
+  python -m src.kg-extract.04_neo4j_cleanup 2>&1 | tee -a "$LOGFILE"
   log_message "KG cleanup completed." "$LOGFILE"
 fi
 
