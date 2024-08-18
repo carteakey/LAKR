@@ -10,7 +10,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Load environment variables
-load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
+load_dotenv(os.getenv('BASE_DIR')+'/env.sh')
 
 # Initialize Neo4j driver
 NEO4J_URI = os.getenv("NEO4J_URI")
@@ -71,8 +71,11 @@ class Neo4jUpdater:
             logging.info(f"Cached {len(self.existing_books)} books, {len(self.existing_concepts)} concepts, and {len(self.existing_series)} series")
 
     def update_graph(self, json_data):
+        success = False
         with self.driver.session() as session:
-            return session.execute_write(self._update_graph_tx, json_data)
+            success = session.execute_write(self._update_graph_tx, json_data)
+        return success
+
 
     def _update_graph_tx(self, tx, json_data):
         try:
@@ -83,52 +86,47 @@ class Neo4jUpdater:
             if main_book_asin not in self.existing_books.values():
                 logging.warning(f"Book with ASIN {main_book_asin} does not exist, skipping.")
                 return False
-
+            
+            success = False
+            
             # Create or match nodes (Books, Concepts, Series)
             for node in json_data['nodes']:
                 node_name = node['id']
                 node_type = node['type']
 
-                if node_type in ['Series']:
-                    self._create_or_match_series(tx, node_type, node_name)
+                if node_type == 'Series':
+                    if self._create_or_match_series(tx, node_type, node_name):
+                        success = True
                 elif node_type in ['Feature', 'Concept']:
-                    self._create_or_match_concept(tx, node_type, node_name)
-
-            # Create relationships
+                    if self._create_or_match_concept(tx, node_type, node_name):
+                        success = True
+             # Create relationships
             for rel in json_data['relationships']:
-                source = rel['source']
-                target = rel['target']
-                rel_type = rel['type']
-
-                source_id = source['id']
-                target_id = target['id']
-                source_type = source['type']
-                target_type = target['type']
-
-                if rel_type == 'SIMILAR_TO_BOOK':
-                    self._create_similar_to_book_relationship(tx, main_book_asin, target_id)
-                elif rel_type == 'DEALS_WITH_CONCEPTS':
-                    self._create_deals_with_concepts_relationship(tx, main_book_asin, target_id)
-                elif rel_type == 'PART_OF_SERIES':
-                    self._create_part_of_series_relationship(tx, source_id, target_id)
-                else:
-                    self._create_generic_relationship(tx, source_type, source_id, target_type, target_id, rel_type)
-
+                if self._process_relationship(tx, main_book_asin, rel):
+                    success = True
+            
+            return success   
+        
         except Exception as e:
             logging.error(f"Error processing graph update: {e}")
             return False
+    
+    def _process_relationship(self, tx, main_book_asin, rel):
+        source_id = rel['source']['id']
+        target_id = rel['target']['id']
+        rel_type = rel['type']
 
-        return True
-        
+        if rel_type == 'SIMILAR_TO_BOOK':
+            return self._create_similar_to_book_relationship(tx, main_book_asin, target_id)
+        elif rel_type == 'DEALS_WITH_CONCEPTS':
+            return self._create_deals_with_concepts_relationship(tx, main_book_asin, target_id)
+        elif rel_type == 'PART_OF_SERIES':
+            return self._create_part_of_series_relationship(tx, source_id, target_id)
+        else:
+            return self._create_generic_relationship(tx, rel['source']['type'], source_id, rel['target']['type'], target_id, rel_type)
+
     def _create_or_match_series(self, tx, node_type, node_name):
-        # if node_type == 'Book':
-            # if node_name.lower() not in self.existing_books:
-            #     tx.run("""
-            #         MERGE (n:Book {title: $name, parent_asin: $asin})
-            #     """, name=node_name, asin=node_name)  # Using name as ASIN for simplicity; adjust if you have actual ASIN
-            #     logging.info(f"Created new Book: {node_name}")
-            #     self.existing_books[node_name.lower()] = node_name  # Using title as ASIN for simplicity
-        if node_type == 'Series':
+        
             best_match = self._find_best_match(node_name, self.existing_series)
             if best_match:
                 logging.info(f"Matched existing Series: {best_match}")
@@ -151,19 +149,22 @@ class Neo4jUpdater:
                     ELSE n.aliases END
             """, matched_name=matched_name, new_name=node_name)
             logging.info(f"Matched existing {node_type}: {matched_name} (Alias: {node_name})")
+            return True
         else:
             tx.run(f"""
                 CREATE (n:{node_type} {{name: $name}})
             """, name=node_name)
             logging.info(f"Created new {node_type}: {node_name}")
             self.existing_concepts.append(node_name)
+            return True
 
     def _create_similar_to_book_relationship(self, tx, main_book_asin, target_id):
-        if main_book_asin == target_id:
-            logging.info(f"Skipping self-reference for book: {main_book_asin}")
-            return
-
         target_asin = self._find_book_asin(target_id)
+        
+        if main_book_asin == target_asin:
+            logging.info(f"Skipping self-reference for book: {main_book_asin}")
+            return False
+        
         if target_asin:
             tx.run("""
                 MATCH (s:Book {parent_asin: $main_asin})
@@ -171,8 +172,10 @@ class Neo4jUpdater:
                 MERGE (s)-[r:SIMILAR_TO_BOOK]->(t)
             """, main_asin=main_book_asin, target_asin=target_asin)
             logging.info(f"Created SIMILAR_TO_BOOK relationship: {main_book_asin} -> {target_asin}")
+            return True
         else:
             logging.warning(f"No match found for book title: {target_id}")
+            return False
 
     def _create_deals_with_concepts_relationship(self, tx, main_book_asin, target_id):
         best_match = self._find_best_match(target_id, self.existing_concepts)
@@ -183,13 +186,15 @@ class Neo4jUpdater:
                 MERGE (s)-[r:DEALS_WITH_CONCEPTS]->(t)
             """, main_asin=main_book_asin, matched_name=best_match)
             logging.info(f"Created DEALS_WITH_CONCEPTS relationship: {main_book_asin} -> {best_match}")
+            return True
         else:
             logging.warning(f"No matching Concept found for: {target_id}")
+            return False
 
     def _create_part_of_series_relationship(self, tx, source_id, target_id):
         book_asin = self._find_book_asin(source_id)
         series_name = self._find_best_match(target_id, self.existing_series)
-        
+
         if book_asin and series_name:
             tx.run("""
                 MATCH (b:Book {parent_asin: $book_asin})
@@ -197,13 +202,15 @@ class Neo4jUpdater:
                 MERGE (b)-[r:PART_OF_SERIES]->(s)
             """, book_asin=book_asin, series_name=series_name)
             logging.info(f"Created PART_OF_SERIES relationship: {book_asin} -> {series_name}")
+            return True
         else:
             if not book_asin:
                 logging.warning(f"Book not found: {source_id}")
             if not series_name:
                 logging.warning(f"Series not found: {target_id}")
             logging.warning(f"Could not create PART_OF_SERIES relationship: Book '{source_id}' or Series '{target_id}' not found")
-            
+            return False
+        
     def _create_generic_relationship(self, tx, source_type, source_id, target_type, target_id, rel_type):
         tx.run(f"""
             MATCH (s:{source_type} {{name: $source_name}})
@@ -211,6 +218,7 @@ class Neo4jUpdater:
             MERGE (s)-[r:{rel_type}]->(t)
         """, source_name=source_id, target_name=target_id)
         logging.info(f"Created {rel_type} relationship: {source_id} -> {target_id}")
+        return True
 
     def _find_best_match(self, name, existing_names):
         best_match = None
@@ -234,18 +242,20 @@ class Neo4jUpdater:
 def process_duckdb_records():
     updater = Neo4jUpdater(NEO4J_URI, (NEO4J_USER, NEO4J_PASSWORD))
     con = duckdb.connect(DUCKDB_PATH)
+    con.sql("""ATTACH 'dbname=amazon_reviews user=admin password=adminpassword host=127.0.0.1' AS pg (TYPE POSTGRES);""")
+    con.sql("USE pg;")
 
     try:
         updater.cache_existing_data()
         records = con.execute("""
-            SELECT user_id, item_id, json_data
-            FROM review_processing_status
+            SELECT user_id, item_id, model, json_data
+            FROM pg.review_processing_status
             WHERE status = 'processed'
             AND rating >= 4
         """).fetchall()
 
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(process_record, updater, con, user_id, item_id, json_data) for user_id, item_id, json_data in records]
+            futures = [executor.submit(process_record, updater, con, user_id, item_id, model, json_data) for user_id, item_id, model, json_data in records]
 
             for future in tqdm.tqdm(as_completed(futures), total=len(futures)):
                 future.result()
@@ -258,20 +268,27 @@ def process_duckdb_records():
         
     logging.info("Update process completed.")
 
-def process_record(updater, con, user_id, item_id, json_data):
+def process_record(updater, con, user_id, item_id, model, json_data):
     try:
-        logging.info(f"Processing review for user {user_id} and item {item_id}")
+        logging.info(f"Processing review for user {user_id} and item {item_id} with model {model}")
         json_content = json.loads(json_data)
 
         if updater.update_graph(json_content):
             con.execute("""
-                UPDATE review_processing_status
+                UPDATE pg.review_processing_status
                 SET status = 'KG_updated'
                 WHERE user_id = ? AND item_id = ?
-            """, [user_id, item_id])
-            logging.info(f"Successfully updated KG for user {user_id} and item {item_id}")
+                AND model = ?
+            """, [user_id, item_id, model ])
+            logging.info(f"Successfully updated KG for user {user_id} and item {item_id} with model {model}")
         else:
-            logging.warning(f"Failed to update KG for user {user_id} and item {item_id}")
+            con.execute("""
+                UPDATE pg.review_processing_status
+                SET status = 'unmatched'
+                WHERE user_id = ? AND item_id = ?
+                AND model = ?
+            """, [user_id, item_id, model])
+            logging.warning(f"Failed to update KG for user {user_id} and item {item_id}  with model {model}")
     except Exception as e:
         logging.error(f"Error processing record for user {user_id} and item {item_id}: {e}")
 
