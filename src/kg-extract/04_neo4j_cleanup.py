@@ -1,16 +1,14 @@
-from neo4j import GraphDatabase
 import logging
-from fuzzywuzzy import fuzz
-from dotenv import load_dotenv
 import os
 
-# Load environment variables
-load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
+from dotenv import load_dotenv
 
-# Initialize Neo4j driver
-NEO4J_URI = os.getenv("NEO4J_URI")
-NEO4J_USER = os.getenv("NEO4J_USER")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+from ..utils.db.neo4j import initialize_neo4j_driver
+
+# Load environment variables
+load_dotenv(os.getenv('BASE_DIR')+'/env.sh')
+
+neo4j_driver = initialize_neo4j_driver()
 
 # Configure logging
 logging.basicConfig(
@@ -19,10 +17,9 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-
 class Neo4jCleaner:
-    def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth)
+    def __init__(self, neo4j_driver):
+        self.driver = neo4j_driver
 
     def close(self):
         self.driver.close()
@@ -37,7 +34,7 @@ class Neo4jCleaner:
         # Remove concepts that are linked to one book or fewer
         result = tx.run("""
             MATCH (c:Concept)
-            WHERE SIZE((c)<-[:DEALS_WITH_CONCEPTS]-()) <= 1
+            WHERE COUNT { (c)<-[:DEALS_WITH_CONCEPTS]-() } <= 1
             WITH c, c.name AS name
             DETACH DELETE c
             RETURN count(c) as removed_concepts, collect(name) as removed_names
@@ -53,8 +50,8 @@ class Neo4jCleaner:
         # Log concepts with low connections (e.g., linked to 2-3 books)
         low_connection_result = tx.run("""
             MATCH (c:Concept)
-            WHERE SIZE((c)<-[:DEALS_WITH_CONCEPTS]-()) > 1 AND SIZE((c)<-[:DEALS_WITH_CONCEPTS]-()) <= 3
-            RETURN c.name as name, SIZE((c)<-[:DEALS_WITH_CONCEPTS]-()) as links
+            WHERE 1 < COUNT { (c)<-[:DEALS_WITH_CONCEPTS]-() } <= 3
+            RETURN c.name as name, COUNT { (c)<-[:DEALS_WITH_CONCEPTS]-() } as links
             ORDER BY links
         """)
                 
@@ -66,7 +63,7 @@ class Neo4jCleaner:
         # Remove series that are linked to fewer than two books
         result = tx.run("""
             MATCH (s:Series)
-            WHERE SIZE((s)<-[:PART_OF_SERIES]-()) < 2
+            WHERE COUNT { (s)<-[:PART_OF_SERIES]-() } < 2
             WITH s, s.name AS name
             DETACH DELETE s
             RETURN count(s) as removed_series, collect(name) as removed_names
@@ -82,8 +79,8 @@ class Neo4jCleaner:
         # Log series with low connections (e.g., linked to 2-3 books)
         low_connection_result = tx.run("""
             MATCH (s:Series)
-            WHERE SIZE((s)<-[:PART_OF_SERIES]-()) > 1 AND SIZE((s)<-[:PART_OF_SERIES]-()) <= 3
-            RETURN s.name as name, SIZE((s)<-[:PART_OF_SERIES]-()) as links
+            WHERE 1 < COUNT { (s)<-[:PART_OF_SERIES]-() } <= 3
+            RETURN s.name as name, COUNT { (s)<-[:PART_OF_SERIES]-() } as links
             ORDER BY links
         """)
                 
@@ -104,17 +101,13 @@ class Neo4jCleaner:
             except Exception as e:
                 logging.error(f"Error deleting '{rel_type}' relationships: {e}")
     
-def main():
-    cleaner = Neo4jCleaner(NEO4J_URI, (NEO4J_USER, NEO4J_PASSWORD))
+cleaner = Neo4jCleaner(neo4j_driver)
 
-    try:
-        cleaner.cleanup_concepts_and_series()
-    except Exception as e:
-        logging.error(f"Error during cleanup: {e}")
-    finally:
-        cleaner.close()
-        logging.info("Cleanup process completed.")
+try:
+    cleaner.cleanup_concepts_and_series()
+except Exception as e:
+    logging.error(f"Error during cleanup: {e}")
+finally:
+    cleaner.close()
+    logging.info("Cleanup process completed.")
 
-
-if __name__ == "__main__":
-    main()
