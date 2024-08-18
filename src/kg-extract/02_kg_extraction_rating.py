@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
+load_dotenv(os.getenv('BASE_DIR')+'/env.sh')
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Rate extractions for a specific relationship type.")
@@ -22,12 +22,16 @@ if model == "gpt-4o-mini":
     llm = ChatOpenAI(temperature=0, model_name="gpt-4o-mini")
 elif model == "llama3":
     llm = ChatOllama(model="llama3.1:8b-instruct-q4_0", temperature=0, format="json")
+elif model == 'gemma2':
+    llm = ChatOllama(model="gemma2:9b-instruct-q4_K_M", temperature=0, format="json")
 
 # Connect to DuckDB
-con = duckdb.connect("/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb")
+con = duckdb.connect("/home/kchauhan/repos/mds/LAKR/db/duckdb/amazon_reviews.duckdb")
+con.sql("""ATTACH 'dbname=amazon_reviews user=admin password=adminpassword host=127.0.0.1' AS pg (TYPE POSTGRES);""")
+con.sql("USE pg;")
 
 def reset_ratings():
-    con.execute(f"UPDATE review_processing_status SET rating = NULL WHERE relationship_type = '{args.relationship}' and status = 'processed'")
+    con.execute(f"UPDATE pg.review_processing_status SET rating = NULL WHERE relationship_type = '{args.relationship}' AND status = 'processed'")
 
 # reset_ratings()
 
@@ -85,7 +89,7 @@ def rate_extraction(llm, input_data):
 unrated_reviews = con.execute(
     f"""
     SELECT user_id, item_id, json_data
-    FROM review_processing_status
+    FROM pg.review_processing_status
     WHERE rating IS NULL AND relationship_type = '{args.relationship}'
 """
 ).fetchall()
@@ -110,7 +114,7 @@ for user_id, item_id, json_data in unrated_reviews:
         # Update the rating in the database
         con.execute(
             """
-            UPDATE review_processing_status
+            UPDATE pg.review_processing_status
             SET rating = ?
             WHERE user_id = ? AND item_id = ? AND relationship_type = ?
         """,
@@ -131,7 +135,7 @@ def get_good_extractions(min_rating=4):
     return con.execute(
         f"""
         SELECT json_data
-        FROM review_processing_status
+        FROM pg.review_processing_status
         WHERE rating >= {min_rating} AND relationship_type = '{args.relationship}'
     """
     ).fetchall()
