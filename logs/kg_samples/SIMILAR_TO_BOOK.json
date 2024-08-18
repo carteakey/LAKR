@@ -1,0 +1,45 @@
+{
+  "title": "Fall of Giants (The Century Trilogy)",
+  "parent_asin": "0525951652",
+  "review_title": "Expert Storyteller/Enthralling Tale!",
+  "review_text": "I thoroughly enjoyed Ken Follett's epics, \"Pillars of the Earth\" and \"World Without End\".  Though they are hefty tomes, the pages flew. Thus I jumped at the chance to read and review Follett's latest epic, \"Fall of Giants\" which promises to be the first in The Century Trilogy.  When it arrived from Amazon at ~1000 pages and 4 inches thick, I found myself contemplating one of the advantages of having a slim Kindel (I don't). When the thing comes out in hardback in September it could be used a murder weapon!<br /><br />But we all know that size doesn't matter when you've got an expert storyteller weaving an enthralling tale. I became so engrossed that I'd look up and 100 pages would have flown by. What is it that makes Follett so consistently \"readable\"? In \"Fall of Giants\" it's because the book is so well researched about the period (early 20th century especially WWI) with information on coal mining, trade unions, women's suffrage, protocols and manners of the minor royalty, politics, government, revolution and war. The story flows from this rich period but the riveting characters are at the forefront. Even the largely unsympathetic characters, such as the Earl, are made at least understandable because Follett thoughtfully portrays their motivations. There are few totally good or evil characters here, as it should be. (Though Follett seems none too fond of Russians and priests - be they Catholic, Anglican or Orthodox!)<br /><br />In past reviews I have criticized authors that I believe would benefit from more editing (e.g., Steven King, John Irving) so why don't I find Follett's book to be too long? Because there are no slow spots, no political point pushing, and no self-indulgent purple prose.<br /><br />I learned a great deal about WWI reading this novel, what led up to it and how it set the stage for WWII, which I hope is the subject of the next volume. It was fascinating to read about how the media and the governments of all the countries involved, lied to their people about how bad it was.<br /><br />One other thing that I believe readers should know going in: as mentioned, this is Part One of a promised trilogy but, like \"Pillars\" and \"World\" it is a stand-alone novel. The reader is not left gripping a cliff at the end. I recently very much enjoyed Connie Willis' \"Blackout\" which DOES end with a cliff hanger and I am glad I knew that going in; some readers didn't and felt cheated. You will not feel at all cheated at the end of \"Fall of Giants\". Enjoy!",
+  "helpful_vote": "3725",
+  "nodes": [
+    {
+      "id": "Fall of Giants (The Century Trilogy)",
+      "type": "Book"
+    },
+    {
+      "id": "Pillars of the Earth",
+      "type": "Book"
+    },
+    {
+      "id": "World Without End",
+      "type": "Book"
+    }
+  ],
+  "relationships": [
+    {
+      "source": {
+        "id": "Pillars of the Earth",
+        "type": "Book"
+      },
+      "target": {
+        "id": "Fall of Giants (The Century Trilogy)",
+        "type": "Book"
+      },
+      "type": "SIMILAR_TO_BOOK"
+    },
+    {
+      "source": {
+        "id": "World Without End",
+        "type": "Book"
+      },
+      "target": {
+        "id": "Fall of Giants (The Century Trilogy)",
+        "type": "Book"
+      },
+      "type": "SIMILAR_TO_BOOK"
+    }
+  ]
+}
