@@ -10,7 +10,7 @@ from langchain_core.documents import Document
 from dotenv import load_dotenv
 
 #Load environment variables
-load_dotenv('/home/kchauhan/repos/mds-tmu-mrp/config/env.sh')
+load_dotenv(os.getenv('BASE_DIR')+'/env.sh')
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process reviews from DuckDB and extract relationships and nodes.")
@@ -20,7 +20,7 @@ args = parser.parse_args()
 
 # Constants
 OUTPUT_DIR = "output"
-DUCKDB_PATH = "/home/kchauhan/repos/mds-tmu-mrp/db/duckdb/amazon_reviews.duckdb"
+DUCKDB_PATH = "/home/kchauhan/repos/mds/LAKR/db/duckdb/amazon_reviews.duckdb"
 BATCH_SIZE = args.batch_size
 
 # Initialize DuckDB connection
