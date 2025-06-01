@@ -248,7 +248,7 @@ graph TD
         end
         subgraph P3_Update [Update]
             direction LR
-            JSONFiles --> KGExt03("03_neo_j_update_kg.py")
+            JSONFiles --> KGExt03("03_neo4j_update_kg.py")
             Neo4jBaseline --> KGExt03
             KGExt03 -->|Write Status| PostgresDB
             KGExt03 --> Neo4jAugmented[("Neo4j (Augmented KG: +Concepts, Series, New Relationships)")]
@@ -257,18 +257,23 @@ graph TD
 
     subgraph P4 [4. Recommendation Model Training (KGAT)]
         direction LR
-        ProcessedSplits --> LoaderKGAT("loader_kgat.py") %% User-item interactions from splits
-        DuckDB_Ratings --> LoaderKGAT %% General ratings context if needed by loader
-        Neo4jAugmented --> LoaderKGAT %% KG structure
+        %% User-item interactions from splits
+        ProcessedSplits --> LoaderKGAT("loader_kgat.py")
+        %% General ratings context if needed by loader
+        DuckDB_Ratings --> LoaderKGAT
+        %% KG structure
+        Neo4jAugmented --> LoaderKGAT
         LoaderKGAT --> KGATTrainData[("KGAT Training Data")]
         KGATTrainData --> MainKGAT("main_kgat.py (Model Training)")
         MainKGAT --> TrainedKGAT[("Trained KGAT Model")]
     end
 
     P1 --> P2
-    P1 --> P4 %% DataSplit output feeds into P4
+    %% DataSplit output feeds into P4
+    P1 --> P4
     P2 --> P3
-    P3 --> P4 %% Neo4jAugmented feeds into P4
+    %% Neo4jAugmented feeds into P4
+    P3 --> P4
 
     %% Styling
     classDef db fill:#f9f,stroke:#333,stroke-width:2px;
