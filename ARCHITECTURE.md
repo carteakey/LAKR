@@ -255,7 +255,7 @@ graph TD
         end
     end
 
-    subgraph P4 [4. Recommendation Model Training (KGAT)]
+    subgraph P4 [4. Recommendation Model Training - KGAT]
         direction LR
         %% User-item interactions from splits
         ProcessedSplits --> LoaderKGAT("loader_kgat.py")
