@@ -218,7 +218,7 @@ The following diagram illustrates the entire LAKR (LLM-Augmented Knowledge Graph
 
 ```mermaid
 graph TD
-    subgraph P1 [1. Data Ingestion & Preprocessing]
+    subgraph P1 [Data Ingestion & Preprocessing]
         direction LR
         RawData[("Raw Data (Amazon Reviews)")] --> KCFilter("01_k_core_filtering.py")
         RawData --> DuckDBMetaIns("02_load_metadata_reviews_duckdb.py")
@@ -230,14 +230,14 @@ graph TD
         DataSplit --> ProcessedSplits[("Train/Test/Valid CSVs")]
     end
 
-    subgraph P2 [2. Baseline KG Creation]
+    subgraph P2 [Baseline KG Creation]
         direction LR
         DuckDB_Ratings --> KGPre03("03_load_metadata_neo4j.py")
         DuckDB_MetaRevs --> KGPre03
         KGPre03 --> Neo4jBaseline[("Neo4j (Baseline KG: Book, Author, Category, etc.)")]
     end
 
-    subgraph P3 [3. LLM-based KG Augmentation]
+    subgraph P3 [LLM-based KG Augmentation]
         direction TB
         subgraph P3_Extract [Extraction]
             direction LR
@@ -255,7 +255,7 @@ graph TD
         end
     end
 
-    subgraph P4 [4. Recommendation Model Training - KGAT]
+    subgraph P4 [Recommendation Model Training - KGAT]
         direction LR
         %% User-item interactions from splits
         ProcessedSplits --> LoaderKGAT("loader_kgat.py")
